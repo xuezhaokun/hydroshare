@@ -167,13 +167,6 @@ def create_account(
 
     username = username if username else email
 
-    useirods = getattr(settings,'USE_IRODS', False)
-    if useirods:
-        from django_irods import account
-        iaccount = account.IrodsAccount()
-        iaccount.create(username)
-        iaccount.setPassward(username, password)
-
     groups = groups if groups else []
     groups = Group.objects.in_bulk(*groups) if groups and isinstance(groups[0], int) else groups
 
@@ -217,6 +210,13 @@ go to http://{domain}/verify/{token}/ and verify your account.
 
     u.groups = groups
 
+    # create iRODS account accordingly
+    useirods = getattr(settings,'USE_IRODS', False)
+    if useirods:
+        from django_irods import account
+        iaccount = account.IrodsAccount()
+        iaccount.create(username)
+        iaccount.setPassward(username, password)
 
     return u
 

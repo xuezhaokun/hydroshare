@@ -28,6 +28,7 @@ from django.core import signing
 from django.template import Context
 import django.dispatch
 from django.contrib.contenttypes.models import ContentType
+
 from django.forms import ValidationError
 from inplaceeditform.commons import get_dict_from_obj, apply_filters, get_adaptor_class
 from inplaceeditform.views import _get_http_response, _get_adaptor
@@ -61,6 +62,7 @@ def verify(request, *args, **kwargs):
         from django.contrib.auth import login
         u.backend = settings.AUTHENTICATION_BACKENDS[0]
         login(request, u)
+
         return HttpResponseRedirect('/account/update/')
     else:
         from django.contrib import messages
@@ -539,52 +541,52 @@ def add_dublin_core(request, page):
 
 res_cls = ""
 resource = None
-@login_required
-def describe_resource(request, *args, **kwargs):
-    resource_type=request.POST['resource-type']
-    res_title = request.POST['title']
-    global res_cls, resource
-    resource_files=request.FILES.getlist('files')
-    valid = hydroshare.check_resource_files(resource_files)
-    if not valid:
-        context = {
-            'file_size_error' : 'The resource file is larger than the supported size limit %s. Select resource files within %s to create resource.' % (file_size_limit_for_display, file_size_limit_for_display)
-        }
-        return render_to_response('pages/resource-selection.html', context, context_instance=RequestContext(request))
-    res_cls = hydroshare.check_resource_type(resource_type)
-    # Send pre_describe_resource signal for other resource type apps to listen, extract, and add their own metadata
-    ret_responses = pre_describe_resource.send(sender=res_cls, files=resource_files, title=res_title)
-
-    create_res_context = {
-        'resource_type': resource_type,
-        'res_title': res_title,
-    }
-    page_url = 'pages/create-resource.html'
-    use_generic = True
-    for receiver, response in ret_responses:
-        if response is not None:
-            for key in response:
-                if key != 'create_resource_page_url':
-                    create_res_context[key] = response[key]
-                else:
-                    page_url = response.get('create_resource_page_url', 'pages/create-resource.html')
-                    use_generic = False
-
-    if use_generic:
-        # create barebone resource with resource_files to database model for later update since on Django 1.7, resource_files get closed automatically at the end of each request
-        owner = user_from_id(request.user)
-        resource = res_cls.objects.create(
-                user=owner,
-                creator=owner,
-                title=res_title,
-                last_changed_by=owner,
-                in_menus=[],
-                **kwargs
-        )
-        for file in resource_files:
-            ResourceFile.objects.create(content_object=resource, resource_file=file)
-
-    return render_to_response(page_url, create_res_context, context_instance=RequestContext(request))
+# @login_required
+# def describe_resource(request, *args, **kwargs):
+#     resource_type=request.POST['resource-type']
+#     res_title = request.POST['title']
+#     global res_cls, resource
+#     resource_files=request.FILES.getlist('files')
+#     valid = hydroshare.check_resource_files(resource_files)
+#     if not valid:
+#         context = {
+#             'file_size_error' : 'The resource file is larger than the supported size limit %s. Select resource files within %s to create resource.' % (file_size_limit_for_display, file_size_limit_for_display)
+#         }
+#         return render_to_response('pages/resource-selection.html', context, context_instance=RequestContext(request))
+#     res_cls = hydroshare.check_resource_type(resource_type)
+#     # Send pre_describe_resource signal for other resource type apps to listen, extract, and add their own metadata
+#     ret_responses = pre_describe_resource.send(sender=res_cls, files=resource_files, title=res_title)
+#
+#     create_res_context = {
+#         'resource_type': resource_type,
+#         'res_title': res_title,
+#     }
+#     page_url = 'pages/create-resource.html'
+#     use_generic = True
+#     for receiver, response in ret_responses:
+#         if response is not None:
+#             for key in response:
+#                 if key != 'create_resource_page_url':
+#                     create_res_context[key] = response[key]
+#                 else:
+#                     page_url = response.get('create_resource_page_url', 'pages/create-resource.html')
+#                     use_generic = False
+#
+#     if use_generic:
+#         # create barebone resource with resource_files to database model for later update since on Django 1.7, resource_files get closed automatically at the end of each request
+#         owner = user_from_id(request.user)
+#         resource = res_cls.objects.create(
+#                 user=owner,
+#                 creator=owner,
+#                 title=res_title,
+#                 last_changed_by=owner,
+#                 in_menus=[],
+#                 **kwargs
+#         )
+#         for file in resource_files:
+#             ResourceFile.objects.create(content_object=resource, resource_file=file)
+#
+#     return render_to_response(page_url, create_res_context, context_instance=RequestContext(request))
 
 
 @login_required
@@ -598,12 +600,6 @@ def create_resource_new_workflow(request, *args, **kwargs):
     res_title = request.POST['title']
     if len(res_title) == 0:
         res_title = 'Untitled resource'
-
-    from hs_core.models import irods_storage
-
-    if irods_storage.session and irods_storage.environment:
-        irods_storage.session.run('iexit full', None, irods_storage.environment.auth)
-    irods_storage.set_user_session(username=request.user.get_username(), password=settings.IRODS_DEFAULT_PASSWARD, userid=request.user.id)
 
     global res_cls, resource
     resource_files = request.FILES.getlist('files')

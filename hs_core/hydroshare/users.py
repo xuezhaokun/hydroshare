@@ -7,7 +7,9 @@ from django.core import signing
 
 from hs_core.models import GroupOwnership
 from .utils import get_resource_by_shortkey, user_from_id, group_from_id, get_resource_types, get_profile
+from django_irods import account
 
+irods_account = None
 
 def set_resource_owner(pk, user):
     """
@@ -213,10 +215,11 @@ go to http://{domain}/verify/{token}/ and verify your account.
     # create iRODS account accordingly
     useirods = getattr(settings,'USE_IRODS', False)
     if useirods:
-        from django_irods import account
-        iaccount = account.IrodsAccount()
-        iaccount.create(username)
-        iaccount.setPassward(username, password)
+        global irods_account
+        if irods_account is None:
+            irods_account = account.IrodsAccount()
+        irods_account.create(username)
+        irods_account.setPassward(username, password)
 
     return u
 

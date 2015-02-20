@@ -24,6 +24,8 @@ from languages_iso import languages as iso_languages
 from dateutil import parser
 import json
 
+irods_storage = IrodsStorage()
+
 class GroupOwnership(models.Model):
     group = models.ForeignKey(Group)
     owner = models.ForeignKey(User)
@@ -1446,16 +1448,16 @@ def get_path(instance, filename):
 class ResourceFile(models.Model):
     object_id = models.PositiveIntegerField()
     content_type = models.ForeignKey(ContentType)
-
+    global irods_storage
     content_object = generic.GenericForeignKey('content_type', 'object_id')
-    resource_file = models.FileField(upload_to=get_path, max_length=500, storage=IrodsStorage() if getattr(settings,'USE_IRODS', False) else DefaultStorage())
+    resource_file = models.FileField(upload_to=get_path, max_length=500, storage=irods_storage if getattr(settings,'USE_IRODS', False) else DefaultStorage())
 
 class Bags(models.Model):
     object_id = models.PositiveIntegerField()
     content_type = models.ForeignKey(ContentType)
-
+    global irods_storage
     content_object = generic.GenericForeignKey('content_type', 'object_id')
-    bag = models.FileField(upload_to='bags', max_length=500, storage=IrodsStorage() if getattr(settings,'USE_IRODS', False) else DefaultStorage(), null=True) # actually never null
+    bag = models.FileField(upload_to='bags', max_length=500, storage=irods_storage if getattr(settings,'USE_IRODS', False) else DefaultStorage(), null=True) # actually never null
     timestamp = models.DateTimeField(default=now, db_index=True)
 
     class Meta:

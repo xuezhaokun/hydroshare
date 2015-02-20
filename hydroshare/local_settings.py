@@ -68,7 +68,7 @@ CELERY_ROUTES = ('django_docker_processes.router.DockerRouter',)
 
 #DOCKER_URL = 'tcp://localhost:2375/'
 DOCKER_URL = 'unix://docker.sock/'
-DOCKER_API_VERSION = '1.12'
+DOCKER_API_VERSION = '1.16'
 
 
 # CartoCSS
@@ -104,18 +104,19 @@ DATABASES = {
 POSTGIS_VERSION=(2,1,1)
 
 # iRODS proxy user configuration
-USE_IRODS=False
-IRODS_ROOT=''
-IRODS_ICOMMANDS_PATH=''
-IRODS_HOST=''
-IRODS_PORT=''
-IRODS_DEFAULT_RESOURCE=''
-IRODS_HOME_COLLECTION=''
-IRODS_CWD=''
-IRODS_ZONE=''
-IRODS_USERNAME=''
-IRODS_AUTH=''
+USE_IRODS=True
+IRODS_ROOT='/tmp'
+IRODS_ICOMMANDS_PATH='/usr/bin'
+IRODS_HOST='hydrotest.renci.org'
+IRODS_PORT='1247'
+IRODS_DEFAULT_RESOURCE='hydrotestResc'
+IRODS_HOME_COLLECTION='/hydrotestZone/home/hsadmin'
+IRODS_CWD='/hydrotestZone/home/hsadmin'
+IRODS_ZONE='hydrotestZone'
+IRODS_USERNAME='hsadmin'
+IRODS_AUTH='playadmin1'
 IRODS_GLOBAL_SESSION=False
+IRODS_DEFAULT_PASSWARD='test123'
 
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

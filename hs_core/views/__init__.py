@@ -599,6 +599,12 @@ def create_resource_new_workflow(request, *args, **kwargs):
     if len(res_title) == 0:
         res_title = 'Untitled resource'
 
+    from hs_core.models import irods_storage
+
+    if irods_storage.session and irods_storage.environment:
+        irods_storage.session.run('iexit full', None, irods_storage.environment.auth)
+    irods_storage.set_user_session(username=request.user.get_username(), password=settings.IRODS_DEFAULT_PASSWARD, userid=request.user.id)
+
     global res_cls, resource
     resource_files = request.FILES.getlist('files')
     valid = hydroshare.check_resource_files(resource_files)
@@ -691,54 +697,54 @@ class CreateResourceForm(forms.Form):
     abstract = forms.CharField(required=False, min_length=0)
     keywords = forms.CharField(required=False, min_length=0)
 
-@login_required
-def create_resource(request, *args, **kwargs):
-    global resource
-    qrylst = request.POST
-    frm = CreateResourceForm(qrylst)
-    if frm.is_valid():
-        dcterms = [
-            { 'term': 'T', 'content': frm.cleaned_data['title'] },
-            { 'term': 'AB',  'content': frm.cleaned_data['abstract'] or frm.cleaned_data['title']},
-            { 'term': 'DT', 'content': now().isoformat()},
-            { 'term': 'DC', 'content': now().isoformat()}
-        ]
-        for cn in frm.cleaned_data['contributors'].split(','):
-            cn = cn.strip()
-            if(cn !=""):
-                dcterms.append({'term': 'CN', 'content': cn})
-        for cr in frm.cleaned_data['creators'].split(','):
-            cr = cr.strip()
-            if(cr !=""):
-                dcterms.append({'term': 'CR', 'content': cr})
-        global res_cls
-        # Send pre_call_create_resource signal
-        metadata = []
-        pre_call_create_resource.send(sender=res_cls, resource=resource, metadata=metadata, request_post = qrylst)
-        res = hydroshare.create_resource(
-            resource_type=qrylst['resource-type'],
-            owner=request.user,
-            title=frm.cleaned_data['title'],
-            keywords=[k.strip() for k in frm.cleaned_data['keywords'].split(',')] if frm.cleaned_data['keywords'] else None,
-            dublin_metadata=dcterms,
-            content=frm.cleaned_data['abstract'] or frm.cleaned_data['title'],
-            res_type_cls = res_cls,
-            resource=resource,
-            metadata=metadata
-        )
-        if res is not None:
-            return HttpResponseRedirect(res.get_absolute_url())
-    else:
-        raise ValidationError(frm.errors)
+# @login_required
+# def create_resource(request, *args, **kwargs):
+#     global resource
+#     qrylst = request.POST
+#     frm = CreateResourceForm(qrylst)
+#     if frm.is_valid():
+#         dcterms = [
+#             { 'term': 'T', 'content': frm.cleaned_data['title'] },
+#             { 'term': 'AB',  'content': frm.cleaned_data['abstract'] or frm.cleaned_data['title']},
+#             { 'term': 'DT', 'content': now().isoformat()},
+#             { 'term': 'DC', 'content': now().isoformat()}
+#         ]
+#         for cn in frm.cleaned_data['contributors'].split(','):
+#             cn = cn.strip()
+#             if(cn !=""):
+#                 dcterms.append({'term': 'CN', 'content': cn})
+#         for cr in frm.cleaned_data['creators'].split(','):
+#             cr = cr.strip()
+#             if(cr !=""):
+#                 dcterms.append({'term': 'CR', 'content': cr})
+#         global res_cls
+#         # Send pre_call_create_resource signal
+#         metadata = []
+#         pre_call_create_resource.send(sender=res_cls, resource=resource, metadata=metadata, request_post = qrylst)
+#         res = hydroshare.create_resource(
+#             resource_type=qrylst['resource-type'],
+#             owner=request.user,
+#             title=frm.cleaned_data['title'],
+#             keywords=[k.strip() for k in frm.cleaned_data['keywords'].split(',')] if frm.cleaned_data['keywords'] else None,
+#             dublin_metadata=dcterms,
+#             content=frm.cleaned_data['abstract'] or frm.cleaned_data['title'],
+#             res_type_cls = res_cls,
+#             resource=resource,
+#             metadata=metadata
+#         )
+#         if res is not None:
+#             return HttpResponseRedirect(res.get_absolute_url())
+#     else:
+#         raise ValidationError(frm.errors)
 
-@login_required
-def get_file(request, *args, **kwargs):
-    from django_irods.icommands import RodsSession
-    name = kwargs['name']
-    session = RodsSession("./", "/usr/bin")
-    session.runCmd("iinit");
-    session.runCmd('iget', [ name, 'tempfile.' + name ])
-    return HttpResponse(open(name), content_type='x-binary/octet-stream')
+# @login_required
+# def get_file(request, *args, **kwargs):
+#     from django_irods.icommands import RodsSession
+#     name = kwargs['name']
+#     session = RodsSession("./", "/usr/bin")
+#     session.runCmd("iinit");
+#     session.runCmd('iget', [ name, 'tempfile.' + name ])
+#     return HttpResponse(open(name), content_type='x-binary/octet-stream')
 
 processor_for(GenericResource)(resource_processor)
 

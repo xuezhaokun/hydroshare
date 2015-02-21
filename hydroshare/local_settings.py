@@ -116,7 +116,6 @@ IRODS_ZONE='hydrotestZone'
 IRODS_USERNAME='hsadmin'
 IRODS_AUTH='playadmin1'
 IRODS_GLOBAL_SESSION=False
-IRODS_DEFAULT_PASSWARD='test123'
 
 # Email configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

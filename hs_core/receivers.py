@@ -7,23 +7,6 @@ from django.dispatch import receiver
 from hs_core.signals import pre_metadata_element_create, pre_metadata_element_update
 from hs_core.models import GenericResource
 from forms import *
-from django.contrib.auth.signals import user_logged_in
-
-@receiver(user_logged_in)
-def user_logged_in_callback(sender, **kwargs):
-    if getattr(settings, 'USE_IRODS', False):
-        if not getattr(settings, 'IRODS_GLOBAL_SESSION', False): # only create user session when IRODS_GLOBAL_SESSION is set to FALSE
-            user = kwargs['user']
-            if not user.is_superuser: # only create user session when the logged in user is not superuser
-                from hs_core.models import irods_storage
-                if irods_storage.session and irods_storage.environment:
-                    try:
-                        irods_storage.session.run('iexit full', None, irods_storage.environment.auth)
-                    except:
-                        pass # try to remove session if there is one, pass without error out if the previous session cannot be removed
-
-                irods_storage.set_user_session(username=user.get_username(), password=settings.IRODS_DEFAULT_PASSWARD, userid=user.id)
-
 
 # This handler is executed only when a metadata element is added as part of editing a resource
 @receiver(pre_metadata_element_create, sender=GenericResource)

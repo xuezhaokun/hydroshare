@@ -10,6 +10,10 @@ from mezzanine.utils.views import render
 from django.utils.translation import ugettext_lazy as _
 from django.contrib.auth import (authenticate, login as auth_login)
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from mezzanine.accounts import get_profile_form
+from django.shortcuts import redirect
+from django.core.urlresolvers import NoReverseMatch
 
 def login(request, template="accounts/account_login.html"):
     """
@@ -37,6 +41,35 @@ def login(request, template="accounts/account_login.html"):
 
         return login_redirect(request)
     context = {"form": form, "title": _("Log in")}
+    return render(request, template, context)
+
+@login_required
+def profile_update(request, template="accounts/account_profile_update.html"):
+    """
+    Profile update form.
+    """
+    profile_form = get_profile_form()
+    form = profile_form(request.POST or None, request.FILES or None,
+                        instance=request.user)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+
+        if getattr(settings, 'USE_IRODS', False):
+            # change password for the corresponding iRODS account accordingly upon success
+            from django_irods import account
+            from hs_core.hydroshare.users import irods_account
+            if irods_account is None:
+                irods_account = account.IrodsAccount()
+            newpwd = form.cleaned_data.get("password1")
+            uname = form.cleaned_data.get("username")
+            irods_account.setPassward(uname, newpwd)
+
+        info(request, _("Profile updated"))
+        try:
+            return redirect("profile", username=user.username)
+        except NoReverseMatch:
+            return redirect("profile_update")
+    context = {"form": form, "title": _("Update Profile")}
     return render(request, template, context)
 
 class UserProfileView(TemplateView):

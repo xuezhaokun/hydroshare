@@ -9,8 +9,6 @@ from hs_core.models import GroupOwnership
 from .utils import get_resource_by_shortkey, user_from_id, group_from_id, get_resource_types, get_profile
 from django_irods import account
 
-irods_account = None
-
 def set_resource_owner(pk, user):
     """
     Changes ownership of the specified resource to the user specified by a userID.
@@ -212,14 +210,20 @@ go to http://{domain}/verify/{token}/ and verify your account.
 
     u.groups = groups
 
-    # create iRODS account accordingly
-    useirods = getattr(settings,'USE_IRODS', False)
-    if useirods:
-        global irods_account
-        if irods_account is None:
-            irods_account = account.IrodsAccount()
+    # create iRODS account accordingly when USE_IRODS is true but IRODS_GLOBAL_SESSION is FALSE and the user is not superuser
+    if getattr(settings,'USE_IRODS', False) and not getattr(settings, 'IRODS_GLOBAL_SESSION', False) and not superuser:
+        irods_account = account.IrodsAccount()
         irods_account.create(username)
         irods_account.setPassward(username, password)
+        # also needs to create a user session corresponding to the user just created to get ready for resource creation
+        from hs_core.models import irods_storage
+        if irods_storage.session and irods_storage.environment:
+            try:
+                irods_storage.session.run('iexit full', None, irods_storage.environment.auth)
+            except:
+                pass # try to remove session if there is one, pass without error out if the previous session cannot be removed
+
+        irods_storage.set_user_session(username=username, password=password, userid=u.id)
 
     return u
 

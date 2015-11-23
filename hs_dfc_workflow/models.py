@@ -11,6 +11,7 @@ from hs_core.hydroshare import utils
 
 # extended metadata elements for DFC Workflow resource type
 class WorkflowInput(AbstractMetaDataElement):
+    term = 'WorkflowInput'
     inputType = models.CharField(max_length=200, null=True, blank=True, verbose_name='Input files type')
     inputDescription = models.TextField(verbose_name='Input files description')
 
@@ -18,6 +19,7 @@ class WorkflowInput(AbstractMetaDataElement):
         return self.inputType
 
 class WorkflowOutput(AbstractMetaDataElement):
+    term = 'WorkflowOutput'
     outputType = models.CharField(max_length=200, null=True, blank=True, verbose_name='Output files type')
     outputDescription = models.TextField(verbose_name='Output files description')
 
@@ -25,6 +27,7 @@ class WorkflowOutput(AbstractMetaDataElement):
         return self.outputType
 
 class WorkflowProcessors(AbstractMetaDataElement):
+    term = 'WorkflowProcessors'
     processorsNumber = models.IntegerField(max_length=200, null=True, blank=True, verbose_name='Processors number')
     processorsType = models.CharField(max_length=200, null=True, blank=True, verbose_name='Processors type')
     processorsDescription = models.TextField(verbose_name='Processors description')
@@ -42,6 +45,7 @@ class WorkflowProcessors(AbstractMetaDataElement):
             return "No"
 
 class IrodsWorkflowProcessors(AbstractMetaDataElement):
+    term = 'IrodsWorkflowProcessors'
     processorsNumber = models.IntegerField(max_length=200, null=True, blank=True, verbose_name='Processors number')
     processorsType = models.CharField(max_length=200, null=True, blank=True, verbose_name='Processors type')
     processorsDescription = models.TextField(verbose_name='Processors description')

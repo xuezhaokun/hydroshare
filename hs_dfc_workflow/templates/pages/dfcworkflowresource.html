@@ -1,10 +1,58 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title></title>
-</head>
-<body>
+{# This template is used as the landing page for Generic Model Instance resource type #}
 
-</body>
-</html>
+{% extends "pages/genericresource.html" %}
+{% load geoanalytics_tags pages_tags mezzanine_tags crispy_forms_tags %}
+{% load staticfiles  %}
+
+{% block extended_metadata %}
+    {% if extended_metadata_exists %}
+        {% if workflow_input %}
+            <legend>Workflow Input</legend>
+            <div class="row">
+                <div class="col-sm-4"><strong>Input files type</strong></div>
+                <div class="col-sm-8">{{ workflow_input.inputType }}</div>
+                <div class="col-sm-4"><strong>Input files description</strong></div>
+                <div class="col-sm-8">{{ workflow_input.inputDescription }}</div>
+            </div>
+        {% endif %}
+        {% if workflow_output %}
+            <legend>Workflow Input</legend>
+            <div class="row">
+                <div class="col-sm-4"><strong>Output files type</strong></div>
+                <div class="col-sm-8">{{ workflow_output.outputType }}</div>
+                <div class="col-sm-4"><strong>Output files description</strong></div>
+                <div class="col-sm-8">{{ workflow_output.outputDescription }}</div>
+            </div>
+        {% endif %}
+        {% if workflow_processors %}
+            <legend>Workflow Processors</legend>
+            <div class="row">
+                <div class="col-sm-4"><strong>Processors number</strong></div>
+                <div class="col-sm-8">{{ workflow_processors.processorsNumber }}</div>
+                <div class="col-sm-4"><strong>Processors type</strong></div>
+                <div class="col-sm-8">{{ workflow_processors.processorsType }}</div>
+                <div class="col-sm-4"><strong>Processors description</strong></div>
+                <div class="col-sm-8">{{ workflow_processors.processorsDescription }}</div>
+                <div class="col-sm-4"><strong>Has Docker image?</strong></div>
+                {% if workflow_processors.has_DockerImage %}
+                    <div class="col-sm-8">Yes</div>
+                {% else %}
+                    <div class="col-sm-8">No</div>
+                {% endif %}
+                 <div class="col-sm-4"><strong>HDocker image URI</strong></div>
+                <div class="col-sm-8"> <a id="permalink" href={{ workflow_processors.dockerImageURI }}>{{ workflow_processors.dockerImageURI }}</a></div>
+            </div>
+        {% endif %}
+        {% if irods_workflow_processors %}
+            <legend>iRODS WSO Processors</legend>
+            <div class="row">
+                <div class="col-sm-4"><strong>Processors number</strong></div>
+                <div class="col-sm-8">{{ irods_workflow_processors.processorsNumber }}</div>
+                <div class="col-sm-4"><strong>Processors type</strong></div>
+                <div class="col-sm-8">{{ irods_workflow_processors.processorsType }}</div>
+                <div class="col-sm-4"><strong>Processors description</strong></div>
+                <div class="col-sm-8">{{ irods_workflow_processors.processorsDescription }}</div>
+            </div>
+        {% endif %}
+    {% endif %}
+{% endblock %}

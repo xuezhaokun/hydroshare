@@ -73,6 +73,8 @@ class WorkflowProcessorsFormHelper(BaseFormHelper):
                         MetadataField('processorsNumber'),
                         MetadataField('processorsType'),
                         MetadataField('processorsDescription'),
+                        MetadataField('has_CodeRepository'),
+                        MetadataField('codeRepositoryURI'),
                         MetadataField('has_DockerImage'),
                         MetadataField('dockerImageURI'),
                  )
@@ -80,6 +82,7 @@ class WorkflowProcessorsFormHelper(BaseFormHelper):
         super(WorkflowProcessorsFormHelper, self).__init__(allow_edit, res_short_id, element_id, element_name, layout,  *args, **kwargs)
 
 class WorkflowProcessorsForm(ModelForm):
+    has_CodeRepository = forms.TypedChoiceField(choices=((True, 'Yes'), (False, 'No')), widget=forms.RadioSelect(attrs={'style': 'width:auto;margin-top:-5px'}))
     has_DockerImage = forms.TypedChoiceField(choices=((True, 'Yes'), (False, 'No')), widget=forms.RadioSelect(attrs={'style': 'width:auto;margin-top:-5px'}))
     def __init__(self, allow_edit=True, res_short_id=None, element_id=None, *args, **kwargs):
         super(WorkflowProcessorsForm, self).__init__(*args, **kwargs)
@@ -90,6 +93,8 @@ class WorkflowProcessorsForm(ModelForm):
         fields = ('processorsNumber',
                   'processorsType',
                   'processorsDescription',
+                  'has_CodeRepository',
+                  'codeRepositoryURI',
                   'has_DockerImage',
                   'dockerImageURI',)
 
@@ -97,8 +102,17 @@ class WorkflowProcessorsValidationForm(forms.Form):
     processorsNumber = forms.CharField(max_length=200, required=False)
     processorsType = forms.CharField(max_length=200, required=False)
     processorsDescription = forms.CharField(max_length=5000, required=False)
+    has_CodeRepository = forms.TypedChoiceField(choices=((True, 'Yes'), (False, 'No')), required=False)
+    codeRepositoryURI = forms.URLField(required=False)
     has_DockerImage = forms.TypedChoiceField(choices=((True, 'Yes'), (False, 'No')), required=False)
     dockerImageURI = forms.URLField(required=False)
+
+    def has_CodeRepository(self):
+        data = self.cleaned_data['has_CodeRepository']
+        if data == u'False':
+            return False
+        else:
+            return True
 
     def clean_has_DockerImage(self):
         data = self.cleaned_data['has_DockerImage']
@@ -115,11 +129,14 @@ class IrodsWorkflowProcessorsFormHelper(BaseFormHelper):
                         MetadataField('irodsProcessorsNumber'),
                         MetadataField('irodsProcessorsType'),
                         MetadataField('irodsProcessorsDescription'),
+                        MetadataField('has_CodeRepository'),
+                        MetadataField('codeRepositoryURI'),
                  )
         kwargs['element_name_label'] = 'iRODS WSO Processors'
         super(IrodsWorkflowProcessorsFormHelper, self).__init__(allow_edit, res_short_id, element_id, element_name, layout,  *args, **kwargs)
 
 class IrodsWorkflowProcessorsForm(ModelForm):
+    has_CodeRepository = forms.TypedChoiceField(choices=((True, 'Yes'), (False, 'No')), widget=forms.RadioSelect(attrs={'style': 'width:auto;margin-top:-5px'}))
     def __init__(self, allow_edit=True, res_short_id=None, element_id=None, *args, **kwargs):
         super(IrodsWorkflowProcessorsForm, self).__init__(*args, **kwargs)
         self.helper = IrodsWorkflowProcessorsFormHelper(allow_edit, res_short_id, element_id, element_name='IrodsWorkflowProcessors')
@@ -128,9 +145,18 @@ class IrodsWorkflowProcessorsForm(ModelForm):
         model = IrodsWorkflowProcessors
         fields = ('irodsProcessorsNumber',
                   'irodsProcessorsType',
-                  'irodsProcessorsDescription',)
+                  'irodsProcessorsDescription',
+                  'has_CodeRepository',
+                  'codeRepositoryURI',)
 
 class IrodsWorkflowProcessorsValidationForm(forms.Form):
     processorsNumber = forms.CharField(max_length=200, required=False)
     processorsType = forms.CharField(max_length=200, required=False)
     processorsDescription = forms.CharField(max_length=5000, required=False)
+
+    def has_CodeRepository(self):
+        data = self.cleaned_data['has_CodeRepository']
+        if data == u'False':
+            return False
+        else:
+            return True

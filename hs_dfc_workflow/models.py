@@ -33,6 +33,8 @@ class WorkflowProcessors(AbstractMetaDataElement):
     processorsNumber = models.PositiveIntegerField(max_length=200, null=True, blank=True, verbose_name='Processors number')
     processorsType = models.CharField(max_length=200, null=True, blank=True, verbose_name='Processors type')
     processorsDescription = models.TextField(verbose_name='Processors description')
+    has_CodeRepository = models.BooleanField(default=False, verbose_name='Has code repository?')
+    codeRepositoryURI = models.URLField(null=True, blank=True, verbose_name='Code repository URI')
     has_DockerImage = models.BooleanField(default=False, verbose_name='Has Docker image?')
     dockerImageURI = models.URLField(null=True, blank=True, verbose_name='Docker image URI')
 
@@ -46,14 +48,30 @@ class WorkflowProcessors(AbstractMetaDataElement):
         else:
             return "No"
 
+    @property
+    def hasCodeRepository(self):
+        if self.has_CodeRepository:
+            return "Yes"
+        else:
+            return "No"
+
 class IrodsWorkflowProcessors(AbstractMetaDataElement):
     term = 'IrodsWorkflowProcessors'
     irodsProcessorsNumber = models.PositiveIntegerField(max_length=200, null=True, blank=True, verbose_name='iRODS Processors number')
     irodsProcessorsType = models.CharField(max_length=200, null=True, blank=True, verbose_name='iRODS Processors type')
     irodsProcessorsDescription = models.TextField(verbose_name='iRODS Processors description')
+    has_CodeRepository = models.BooleanField(default=False, verbose_name='Has code repository?')
+    codeRepositoryURI = models.URLField(null=True, blank=True, verbose_name='Code repository URI')
 
     def __unicode__(self):
         return self.irodsProcessorsType
+
+    @property
+    def hasCodeRepository(self):
+        if self.has_CodeRepository:
+            return "Yes"
+        else:
+            return "No"
 
 # DFC Workflow Resource type
 class DFCWorkflowResource(BaseResource):
@@ -147,11 +165,12 @@ class DFCWorkflowMetaData(CoreMetaData):
 
         if self.workflow_processors:
             workflowProcessorsFields = ['processorsNumber', 'processorsType', 'processorsDescription', \
-                                        'hasDockerImage', 'dockerImageURI']
+                                        'hasCodeRepository', 'codeRepositoryURI', 'hasDockerImage', 'dockerImageURI']
             self.add_metadata_element_to_xml(container,self.workflow_processors,workflowProcessorsFields)
 
         if self.irods_workflow_processors:
-            irodsWorkflowOutputFields = ['irodsProcessorsNumber', 'irodsProcessorsType', 'irodsProcessorsDescription']
+            irodsWorkflowOutputFields = ['irodsProcessorsNumber', 'irodsProcessorsType', 'irodsProcessorsDescription', \
+                                         'hasCodeRepository', 'codeRepositoryURI']
             self.add_metadata_element_to_xml(container,self.irods_workflow_processors,irodsWorkflowOutputFields)
 
 

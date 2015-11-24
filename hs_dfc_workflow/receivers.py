@@ -7,11 +7,11 @@ from hs_dfc_workflow.forms import WorkflowInputValidationForm, WorkflowOutputVal
     WorkflowProcessorsValidationForm, IrodsWorkflowProcessorsValidationForm
 from hs_dfc_workflow.models import DFCWorkflowResource
 
-@receiver(pre_create_resource, sender=DFCWorkflowResource)
-def dfcworkflow_pre_create_resource(sender, **kwargs):
-    metadata = kwargs['metadata']
-    workflowprocessors = {'workflowprocessors': {'has_DockerImage': False}}
-    metadata.append(workflowprocessors)
+# @receiver(pre_create_resource, sender=DFCWorkflowResource)
+# def dfcworkflow_pre_create_resource(sender, **kwargs):
+#     metadata = kwargs['metadata']
+#     workflowprocessors = {'workflowprocessors': {'has_DockerImage': False}}
+#     metadata.append(workflowprocessors)
 
 @receiver(pre_metadata_element_create, sender=DFCWorkflowResource)
 def metadata_element_pre_create_handler(sender, **kwargs):

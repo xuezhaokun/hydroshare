@@ -24,7 +24,7 @@
                 <div class="col-sm-8">{{ workflow_output.outputDescription }}</div>
             </div>
         {% endif %}
-        {% if workflow_processors %}
+        {% if workflow_processors.processorsNumber %}
             <legend>Workflow Processors</legend>
             <div class="row">
                 <div class="col-sm-4"><strong>Processors number</strong></div>
@@ -47,11 +47,11 @@
             <legend>iRODS WSO Processors</legend>
             <div class="row">
                 <div class="col-sm-4"><strong>Processors number</strong></div>
-                <div class="col-sm-8">{{ irods_workflow_processors.processorsNumber }}</div>
+                <div class="col-sm-8">{{ irods_workflow_processors.irodsProcessorsNumber }}</div>
                 <div class="col-sm-4"><strong>Processors type</strong></div>
-                <div class="col-sm-8">{{ irods_workflow_processors.processorsType }}</div>
+                <div class="col-sm-8">{{ irods_workflow_processors.irodsProcessorsType }}</div>
                 <div class="col-sm-4"><strong>Processors description</strong></div>
-                <div class="col-sm-8">{{ irods_workflow_processors.processorsDescription }}</div>
+                <div class="col-sm-8">{{ irods_workflow_processors.irodsProcessorsDescription }}</div>
             </div>
         {% endif %}
     {% endif %}

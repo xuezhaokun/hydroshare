@@ -30,7 +30,7 @@ class WorkflowOutput(AbstractMetaDataElement):
 
 class WorkflowProcessors(AbstractMetaDataElement):
     term = 'WorkflowProcessors'
-    processorsNumber = models.IntegerField(max_length=200, null=True, blank=True, verbose_name='Processors number')
+    processorsNumber = models.PositiveIntegerField(max_length=200, null=True, blank=True, verbose_name='Processors number')
     processorsType = models.CharField(max_length=200, null=True, blank=True, verbose_name='Processors type')
     processorsDescription = models.TextField(verbose_name='Processors description')
     has_DockerImage = models.BooleanField(default=False, verbose_name='Has Docker image?')
@@ -48,12 +48,12 @@ class WorkflowProcessors(AbstractMetaDataElement):
 
 class IrodsWorkflowProcessors(AbstractMetaDataElement):
     term = 'IrodsWorkflowProcessors'
-    processorsNumber = models.IntegerField(max_length=200, null=True, blank=True, verbose_name='Processors number')
-    processorsType = models.CharField(max_length=200, null=True, blank=True, verbose_name='Processors type')
-    processorsDescription = models.TextField(verbose_name='Processors description')
+    irodsProcessorsNumber = models.PositiveIntegerField(max_length=200, null=True, blank=True, verbose_name='iRODS Processors number')
+    irodsProcessorsType = models.CharField(max_length=200, null=True, blank=True, verbose_name='iRODS Processors type')
+    irodsProcessorsDescription = models.TextField(verbose_name='iRODS Processors description')
 
     def __unicode__(self):
-        return self.processorsType
+        return self.irodsProcessorsType
 
 # DFC Workflow Resource type
 class DFCWorkflowResource(BaseResource):
@@ -151,7 +151,7 @@ class DFCWorkflowMetaData(CoreMetaData):
             self.add_metadata_element_to_xml(container,self.workflow_processors,workflowProcessorsFields)
 
         if self.irods_workflow_processors:
-            irodsWorkflowOutputFields = ['processorsNumber', 'processorsType', 'processorsDescription']
+            irodsWorkflowOutputFields = ['irodsProcessorsNumber', 'irodsProcessorsType', 'irodsProcessorsDescription']
             self.add_metadata_element_to_xml(container,self.irods_workflow_processors,irodsWorkflowOutputFields)
 
 

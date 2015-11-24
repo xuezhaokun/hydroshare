@@ -112,9 +112,9 @@ class IrodsWorkflowProcessorsFormHelper(BaseFormHelper):
 
         # the order in which the model fields are listed for the FieldSet is the order these fields will be displayed
         layout = Layout(
-                        MetadataField('processorsNumber'),
-                        MetadataField('processorsType'),
-                        MetadataField('processorsDescription'),
+                        MetadataField('irodsProcessorsNumber'),
+                        MetadataField('irodsProcessorsType'),
+                        MetadataField('irodsProcessorsDescription'),
                  )
         kwargs['element_name_label'] = 'iRODS WSO Processors'
         super(IrodsWorkflowProcessorsFormHelper, self).__init__(allow_edit, res_short_id, element_id, element_name, layout,  *args, **kwargs)
@@ -126,9 +126,9 @@ class IrodsWorkflowProcessorsForm(ModelForm):
 
     class Meta:
         model = IrodsWorkflowProcessors
-        fields = ('processorsNumber',
-                  'processorsType',
-                  'processorsDescription',)
+        fields = ('irodsProcessorsNumber',
+                  'irodsProcessorsType',
+                  'irodsProcessorsDescription',)
 
 class IrodsWorkflowProcessorsValidationForm(forms.Form):
     processorsNumber = forms.CharField(max_length=200, required=False)

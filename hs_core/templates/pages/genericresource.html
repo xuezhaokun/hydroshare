@@ -49,7 +49,7 @@
                         {% if cm.resource_type == "DFCWorkflowResource" %}
                             {% if not cm.has_required_content_files %}
                                 <br>
-                                    <span>At least files with extensions ".mss", and ".mpf" are required to make the resource public or discoverable.</span>
+                                    <span>Workflow file (.mss) and Parameter file (.mpf) are required to make the resource public or discoverable.</span>
                             {% endif %}
                         {%  elif not cm.has_required_content_files %}
                             <br>

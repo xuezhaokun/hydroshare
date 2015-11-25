@@ -34,7 +34,7 @@ def _process_metadata_update_create(**kwargs):
         element_form = WorkflowInputValidationForm(request.POST)
     elif element_name == 'workflowoutput':
         element_form = WorkflowOutputValidationForm(request.POST)
-    elif element_name == 'IrodsWorkflowProcessors':
+    elif element_name == 'irodsworkflowprocessors':
         element_form = IrodsWorkflowProcessorsValidationForm(request.POST)
     elif element_name == 'workflowprocessors':
         element_form = WorkflowProcessorsValidationForm(request.POST)

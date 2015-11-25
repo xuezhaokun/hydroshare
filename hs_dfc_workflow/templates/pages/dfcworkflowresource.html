@@ -15,6 +15,7 @@
                 <div class="col-sm-8">{{ workflow_input.inputDescription }}</div>
             </div>
         {% endif %}
+        <br>
         {% if workflow_output %}
             <legend>Workflow Input</legend>
             <div class="row">
@@ -24,6 +25,7 @@
                 <div class="col-sm-8">{{ workflow_output.outputDescription }}</div>
             </div>
         {% endif %}
+        <br>
         {% if irods_workflow_processors %}
             <legend>iRODS WSO Processors</legend>
             <div class="row">
@@ -31,8 +33,12 @@
                 <div class="col-sm-8">{{ irods_workflow_processors.irodsProcessorsNumber }}</div>
                 <div class="col-sm-4"><strong>Processors type</strong></div>
                 <div class="col-sm-8">{{ irods_workflow_processors.irodsProcessorsType }}</div>
+            </div>
+            <div class="row">
                 <div class="col-sm-4"><strong>Processors description</strong></div>
                 <div class="col-sm-8">{{ irods_workflow_processors.irodsProcessorsDescription }}</div>
+            </div>
+            <div class="row">
                 <div class="col-sm-4"><strong>Has code repository?</strong></div>
                 {% if irods_workflow_processors.has_CodeRepository %}
                     <div class="col-sm-8">Yes</div>
@@ -40,9 +46,14 @@
                     <div class="col-sm-8">No</div>
                 {% endif %}
                  <div class="col-sm-4"><strong>Code repository URI</strong></div>
-                <div class="col-sm-8"> <a id="permalink" href={{ irods_workflow_processors.codeRepositoryURI }}>{{ irods_workflow_processors.codeRepositoryURI }}</a></div>
+                {% if not irods_workflow_processors.codeRepositoryURI %}
+                    <div class="col-sm-8">None</div>
+                {% else%}
+                    <div class="col-sm-8"> <a id="permalink" href={{ irods_workflow_processors.codeRepositoryURI }}>{{ irods_workflow_processors.codeRepositoryURI }}</a></div>
+                {% endif %}
             </div>
         {% endif %}
+        <br>
         {% if workflow_processors.processorsNumber %}
             <legend>Workflow Processors</legend>
             <div class="row">
@@ -50,8 +61,12 @@
                 <div class="col-sm-8">{{ workflow_processors.processorsNumber }}</div>
                 <div class="col-sm-4"><strong>Processors type</strong></div>
                 <div class="col-sm-8">{{ workflow_processors.processorsType }}</div>
+            </div>
+            <div class="row">
                 <div class="col-sm-4"><strong>Processors description</strong></div>
                 <div class="col-sm-8">{{ workflow_processors.processorsDescription }}</div>
+            </div>
+            <div class="row">
                 <div class="col-sm-4"><strong>Has code repository?</strong></div>
                 {% if workflow_processors.has_CodeRepository %}
                     <div class="col-sm-8">Yes</div>
@@ -59,7 +74,13 @@
                     <div class="col-sm-8">No</div>
                 {% endif %}
                  <div class="col-sm-4"><strong>Code repository URI</strong></div>
-                <div class="col-sm-8"> <a id="permalink" href={{ workflow_processors.codeRepositoryURI }}>{{ workflow_processors.codeRepositoryURI }}</a></div>
+                {% if not workflow_processors.codeRepositoryURI %}
+                    <div class="col-sm-8">None</div>
+                {% else%}
+                    <div class="col-sm-8"> <a id="permalink" href={{ workflow_processors.codeRepositoryURI }}>{{ workflow_processors.codeRepositoryURI }}</a></div>
+                {% endif %}
+            </div>
+            <div class="row">
                 <div class="col-sm-4"><strong>Has Docker image?</strong></div>
                 {% if workflow_processors.has_DockerImage %}
                     <div class="col-sm-8">Yes</div>
@@ -67,7 +88,11 @@
                     <div class="col-sm-8">No</div>
                 {% endif %}
                  <div class="col-sm-4"><strong>Docker image URI</strong></div>
-                <div class="col-sm-8"> <a id="permalink" href={{ workflow_processors.dockerImageURI }}>{{ workflow_processors.dockerImageURI }}</a></div>
+                {% if not workflow_processors.dockerImageURI %}
+                    <div class="col-sm-8">None</div>
+                {% else%}
+                    <div class="col-sm-8"> <a id="permalink" href={{ workflow_processors.dockerImageURI }}>{{ workflow_processors.dockerImageURI }}</a></div>
+                {% endif %}
             </div>
         {% endif %}
     {% endif %}

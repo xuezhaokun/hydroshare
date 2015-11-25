@@ -65,6 +65,48 @@ class WorkflowOutputValidationForm(forms.Form):
     outputType = forms.CharField(max_length=200, required=False)
     outputDescription = forms.CharField(max_length=5000, required=False)
 
+class IrodsWorkflowProcessorsFormHelper(BaseFormHelper):
+    def __init__(self, allow_edit=True, res_short_id=None, element_id=None, element_name=None,  *args, **kwargs):
+
+        # the order in which the model fields are listed for the FieldSet is the order these fields will be displayed
+        layout = Layout(
+                        MetadataField('irodsProcessorsNumber'),
+                        MetadataField('irodsProcessorsType'),
+                        MetadataField('irodsProcessorsDescription'),
+                        MetadataField('has_CodeRepository'),
+                        MetadataField('codeRepositoryURI'),
+                 )
+        kwargs['element_name_label'] = 'iRODS WSO Processors'
+        super(IrodsWorkflowProcessorsFormHelper, self).__init__(allow_edit, res_short_id, element_id, element_name, layout,  *args, **kwargs)
+
+class IrodsWorkflowProcessorsForm(ModelForm):
+    has_CodeRepository = forms.TypedChoiceField(choices=((True, 'Yes'), (False, 'No')), widget=forms.RadioSelect(attrs={'style': 'width:auto;margin-top:-5px'}))
+    def __init__(self, allow_edit=True, res_short_id=None, element_id=None, *args, **kwargs):
+        super(IrodsWorkflowProcessorsForm, self).__init__(*args, **kwargs)
+        self.helper = IrodsWorkflowProcessorsFormHelper(allow_edit, res_short_id, element_id, element_name='IrodsWorkflowProcessors')
+
+    class Meta:
+        model = IrodsWorkflowProcessors
+        fields = ('irodsProcessorsNumber',
+                  'irodsProcessorsType',
+                  'irodsProcessorsDescription',
+                  'has_CodeRepository',
+                  'codeRepositoryURI',)
+
+class IrodsWorkflowProcessorsValidationForm(forms.Form):
+    irodsProcessorsNumber = forms.CharField(max_length=200, required=False)
+    irodsProcessorsType = forms.CharField(max_length=200, required=False)
+    irodsProcessorsDescription = forms.CharField(max_length=5000, required=False)
+    has_CodeRepository = forms.TypedChoiceField(choices=((True, 'Yes'), (False, 'No')), required=False)
+    codeRepositoryURI = forms.URLField(required=False)
+
+    def has_CodeRepository(self):
+        data = self.cleaned_data['has_CodeRepository']
+        if data == u'False':
+            return False
+        else:
+            return True
+
 class WorkflowProcessorsFormHelper(BaseFormHelper):
     def __init__(self, allow_edit=True, res_short_id=None, element_id=None, element_name=None,  *args, **kwargs):
 
@@ -116,46 +158,6 @@ class WorkflowProcessorsValidationForm(forms.Form):
 
     def clean_has_DockerImage(self):
         data = self.cleaned_data['has_DockerImage']
-        if data == u'False':
-            return False
-        else:
-            return True
-
-class IrodsWorkflowProcessorsFormHelper(BaseFormHelper):
-    def __init__(self, allow_edit=True, res_short_id=None, element_id=None, element_name=None,  *args, **kwargs):
-
-        # the order in which the model fields are listed for the FieldSet is the order these fields will be displayed
-        layout = Layout(
-                        MetadataField('irodsProcessorsNumber'),
-                        MetadataField('irodsProcessorsType'),
-                        MetadataField('irodsProcessorsDescription'),
-                        MetadataField('has_CodeRepository'),
-                        MetadataField('codeRepositoryURI'),
-                 )
-        kwargs['element_name_label'] = 'iRODS WSO Processors'
-        super(IrodsWorkflowProcessorsFormHelper, self).__init__(allow_edit, res_short_id, element_id, element_name, layout,  *args, **kwargs)
-
-class IrodsWorkflowProcessorsForm(ModelForm):
-    has_CodeRepository = forms.TypedChoiceField(choices=((True, 'Yes'), (False, 'No')), widget=forms.RadioSelect(attrs={'style': 'width:auto;margin-top:-5px'}))
-    def __init__(self, allow_edit=True, res_short_id=None, element_id=None, *args, **kwargs):
-        super(IrodsWorkflowProcessorsForm, self).__init__(*args, **kwargs)
-        self.helper = IrodsWorkflowProcessorsFormHelper(allow_edit, res_short_id, element_id, element_name='IrodsWorkflowProcessors')
-
-    class Meta:
-        model = IrodsWorkflowProcessors
-        fields = ('irodsProcessorsNumber',
-                  'irodsProcessorsType',
-                  'irodsProcessorsDescription',
-                  'has_CodeRepository',
-                  'codeRepositoryURI',)
-
-class IrodsWorkflowProcessorsValidationForm(forms.Form):
-    processorsNumber = forms.CharField(max_length=200, required=False)
-    processorsType = forms.CharField(max_length=200, required=False)
-    processorsDescription = forms.CharField(max_length=5000, required=False)
-
-    def has_CodeRepository(self):
-        data = self.cleaned_data['has_CodeRepository']
         if data == u'False':
             return False
         else:

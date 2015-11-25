@@ -24,6 +24,25 @@
                 <div class="col-sm-8">{{ workflow_output.outputDescription }}</div>
             </div>
         {% endif %}
+        {% if irods_workflow_processors %}
+            <legend>iRODS WSO Processors</legend>
+            <div class="row">
+                <div class="col-sm-4"><strong>Processors number</strong></div>
+                <div class="col-sm-8">{{ irods_workflow_processors.irodsProcessorsNumber }}</div>
+                <div class="col-sm-4"><strong>Processors type</strong></div>
+                <div class="col-sm-8">{{ irods_workflow_processors.irodsProcessorsType }}</div>
+                <div class="col-sm-4"><strong>Processors description</strong></div>
+                <div class="col-sm-8">{{ irods_workflow_processors.irodsProcessorsDescription }}</div>
+                <div class="col-sm-4"><strong>Has code repository?</strong></div>
+                {% if irods_workflow_processors.has_CodeRepository %}
+                    <div class="col-sm-8">Yes</div>
+                {% else %}
+                    <div class="col-sm-8">No</div>
+                {% endif %}
+                 <div class="col-sm-4"><strong>Code repository URI</strong></div>
+                <div class="col-sm-8"> <a id="permalink" href={{ irods_workflow_processors.codeRepositoryURI }}>{{ irods_workflow_processors.codeRepositoryURI }}</a></div>
+            </div>
+        {% endif %}
         {% if workflow_processors.processorsNumber %}
             <legend>Workflow Processors</legend>
             <div class="row">
@@ -49,25 +68,6 @@
                 {% endif %}
                  <div class="col-sm-4"><strong>Docker image URI</strong></div>
                 <div class="col-sm-8"> <a id="permalink" href={{ workflow_processors.dockerImageURI }}>{{ workflow_processors.dockerImageURI }}</a></div>
-            </div>
-        {% endif %}
-        {% if irods_workflow_processors %}
-            <legend>iRODS WSO Processors</legend>
-            <div class="row">
-                <div class="col-sm-4"><strong>Processors number</strong></div>
-                <div class="col-sm-8">{{ irods_workflow_processors.irodsProcessorsNumber }}</div>
-                <div class="col-sm-4"><strong>Processors type</strong></div>
-                <div class="col-sm-8">{{ irods_workflow_processors.irodsProcessorsType }}</div>
-                <div class="col-sm-4"><strong>Processors description</strong></div>
-                <div class="col-sm-8">{{ irods_workflow_processors.irodsProcessorsDescription }}</div>
-                <div class="col-sm-4"><strong>Has code repository?</strong></div>
-                {% if workflow_processors.has_CodeRepository %}
-                    <div class="col-sm-8">Yes</div>
-                {% else %}
-                    <div class="col-sm-8">No</div>
-                {% endif %}
-                 <div class="col-sm-4"><strong>Code repository URI</strong></div>
-                <div class="col-sm-8"> <a id="permalink" href={{ workflow_processors.codeRepositoryURI }}>{{ workflow_processors.codeRepositoryURI }}</a></div>
             </div>
         {% endif %}
     {% endif %}

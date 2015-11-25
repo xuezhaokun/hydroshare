@@ -22,15 +22,15 @@ def landing_page(request, page):
         extended_metadata_exists = False
         if content_model.metadata.workflow_input or \
                 content_model.metadata.workflow_output or \
-                content_model.metadata.workflow_processors or \
-                content_model.metadata.irods_workflow_processors:
+                content_model.metadata.irods_workflow_processors or \
+                content_model.metadata.workflow_processors:
             extended_metadata_exists = True
 
         context['extended_metadata_exists'] = extended_metadata_exists
         context['workflow_input'] = content_model.metadata.workflow_input
         context['workflow_output'] = content_model.metadata.workflow_output
-        context['workflow_processors'] = content_model.metadata.workflow_processors
         context['irods_workflow_processors'] = content_model.metadata.irods_workflow_processors
+        context['workflow_processors'] = content_model.metadata.workflow_processors
     else:
         workflow_input_form = WorkflowInputForm(instance=content_model.metadata.workflow_input,
                                             res_short_id=content_model.short_id,
@@ -40,14 +40,13 @@ def landing_page(request, page):
                                           res_short_id=content_model.short_id,
                                           element_id=content_model.metadata.workflow_output.id if content_model.metadata.workflow_output else None)
 
-        workflow_processors_form = WorkflowProcessorsForm(instance=content_model.metadata.workflow_processors,
-                                          res_short_id=content_model.short_id,
-                                          element_id=content_model.metadata.workflow_processors.id if content_model.metadata.workflow_processors else None)
-
         irods_workflow_processors_form = IrodsWorkflowProcessorsForm(instance=content_model.metadata.irods_workflow_processors,
                                           res_short_id=content_model.short_id,
                                           element_id=content_model.metadata.irods_workflow_processors.id if content_model.metadata.irods_workflow_processors else None)
 
+        workflow_processors_form = WorkflowProcessorsForm(instance=content_model.metadata.workflow_processors,
+                                          res_short_id=content_model.short_id,
+                                          element_id=content_model.metadata.workflow_processors.id if content_model.metadata.workflow_processors else None)
 
 
         ext_md_layout = Layout(
@@ -59,13 +58,13 @@ def landing_page(request, page):
                                 '{% load crispy_forms_tags %} '
                                 '{% crispy workflow_output_form %} '
                                 '</div> '),
-                           HTML('<div class="form-group" id="workflowprocessors"> '
-                                '{% load crispy_forms_tags %} '
-                                '{% crispy workflow_processors_form %} '
-                                '</div> '),
                            HTML('<div class="form-group" id="irodsworkflowprocessors"> '
                                 '{% load crispy_forms_tags %} '
                                 '{% crispy irods_workflow_processors_form %} '
+                                '</div> '),
+                           HTML('<div class="form-group" id="workflowprocessors"> '
+                                '{% load crispy_forms_tags %} '
+                                '{% crispy workflow_processors_form %} '
                                 '</div> ')
         )
 
@@ -77,8 +76,8 @@ def landing_page(request, page):
         context['resource_type'] = 'DFC Workflow Resource'
         context['workflow_input_form'] = workflow_input_form
         context['workflow_output_form'] = workflow_output_form
-        context['workflow_processors_form'] = workflow_processors_form
         context['irods_workflow_processors_form'] = irods_workflow_processors_form
+        context['workflow_processors_form'] = workflow_processors_form
 
     hs_core_context = add_generic_context(request, page)
     context.update(hs_core_context)

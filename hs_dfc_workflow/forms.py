@@ -100,7 +100,7 @@ class IrodsWorkflowProcessorsValidationForm(forms.Form):
     has_CodeRepository = forms.TypedChoiceField(choices=((True, 'Yes'), (False, 'No')), required=False)
     codeRepositoryURI = forms.URLField(required=False)
 
-    def has_CodeRepository(self):
+    def clean_has_CodeRepository(self):
         data = self.cleaned_data['has_CodeRepository']
         if data == u'False':
             return False
@@ -149,7 +149,7 @@ class WorkflowProcessorsValidationForm(forms.Form):
     has_DockerImage = forms.TypedChoiceField(choices=((True, 'Yes'), (False, 'No')), required=False)
     dockerImageURI = forms.URLField(required=False)
 
-    def has_CodeRepository(self):
+    def clean_has_CodeRepository(self):
         data = self.cleaned_data['has_CodeRepository']
         if data == u'False':
             return False

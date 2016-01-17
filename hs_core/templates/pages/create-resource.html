@@ -14,22 +14,22 @@
 
 {% block main %}
     {% block error %}
-        {%  if file_validation_error %}
+        {%  if validation_error %}
             <div class="alert alert-danger alert-dismissible" role="alert">
                   <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                  <strong>Uploaded File Validation Error:{{ file_validation_error }}</strong>
+                  <strong>Validation Error: {{ validation_error }}</strong>
              </div>
         {%  endif %}
         {%  if file_size_error %}
             <div class="alert alert-danger alert-dismissible" role="alert">
                   <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                  <strong>Uploaded File Size Error:{{ file_size_error }}</strong>
+                  <strong>Uploaded File Size Error: {{ file_size_error }}</strong>
              </div>
         {%  endif %}
         {%  if resource_creation_error %}
             <div class="alert alert-danger alert-dismissible" role="alert">
                   <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                  <strong>Failed to Create Resource:{{ resource_creation_error }}</strong>
+                  <strong>Failed to Create Resource: {{ resource_creation_error }}</strong>
              </div>
         {%  endif %}
     {% endblock %}
@@ -56,7 +56,7 @@
                 <option value="DFCWorkflowResource">DFC Workflow Resource</option>
                 <option value="NetcdfResource">Multidimensional (NetCDF)</option>
                 <option value="TimeSeriesResource">Time Series</option>
-{#                <option value="ToolResource">Application</option>#}
+                <option value="ToolResource">Web App</option>
 {#                <option value="InstResource">RHESSys Instance Resource</option> #}
                 <option value="GeographicFeatureResource">Geographic Feature (ESRI Shapefiles)</option>
 
@@ -77,18 +77,24 @@
                 <td><input type="file" name="files" id="select-file" multiple/></td>
             </tr>
             <tr>
-                <td><a id="btn-signin-irods"  type="button" class="btn btn-success" data-toggle="modal" data-target="#irodsSignin">
-                    <span class="glyphicon glyphicon-plus"><span class="button-label">Sign in iRODS...</span></span></a>
-                <span id="sign-in-info"></span>
-                <input type="hidden" id="irods-username" name="irods-username" value="">
-                <input type="hidden" id="irods-password" name="irods-password" value="">
-                <input type="hidden" id="irods-host" name="irods-host" value="">
-                <input type="hidden" id="irods-port" name="irods-port" value="">
-                <input type="hidden" id="irods-zone" name="irods-zone" value="">
-                <input type="hidden" id="irods_file_names" name="irods_file_names" value="">
-                <a id="btn-select-irods-file"  type="button" class="btn btn-success" data-toggle="modal" data-target="#irodsContent" style="display:none;">
-                    <span class="glyphicon glyphicon-plus"><span class="button-label">Browse iRODS...</span></span></a>
-                <span id="irods-sel-file"></span>
+                <td>
+                    <span id="log-into-irods">
+                        To load files from an iRODS server,
+                        <a id="btn-signin-irods" type="button" class="btn-link" data-toggle="modal" data-target="#irodsSignin">log in to iRODS</a>
+                        <span id="sign-in-info"></span>
+                        <br>
+                    </span>
+                    <input type="hidden" id="irods-username" name="irods-username" value="">
+                    <input type="hidden" id="irods-password" name="irods-password" value="">
+                    <input type="hidden" id="irods-host" name="irods-host" value="">
+                    <input type="hidden" id="irods-port" name="irods-port" value="">
+                    <input type="hidden" id="irods-zone" name="irods-zone" value="">
+                    <input type="hidden" id="irods_file_names" name="irods_file_names" value="">
+                    <a id="btn-select-irods-file"  type="button" class="btn btn-default row-selector hidden-form" data-toggle="modal" data-target="#irodsContent" >
+                        Browse iRODS...
+                    </a>
+                    <span id="irods-sel-file"></span>
+                    <a id="btn-signout-irods" type="button" class="btn-link hidden-form">log out of iRODS</a>
                 </td>
             </tr>
         </tbody>
@@ -96,8 +102,8 @@
         <div id="file-multiple">Multiple file upload is allowed.</div>
         </table>
 
-        <h2 style="color:red">{{ file_size_error }}</h2>
-        <h2 id="file-type-error" style="color:red">{{ file_validation_error }}</h2>
+        <h2 class="text-red">{{ file_size_error }}</h2>
+        <h2 id="file-type-error" class="text-red">{{ validation_error }}</h2>
     </div>
 
     <div class="form-group">

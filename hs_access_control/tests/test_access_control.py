@@ -99,6 +99,15 @@ class BasicFunction(MockIRODSTestCaseMixin, TestCase):
             groups=[]
         )
 
+        self.john = hydroshare.create_account(
+            'john@gmail.com',
+            username='john',
+            first_name='john',
+            last_name='miller',
+            superuser=False,
+            groups=[]
+        )
+
         self.admin = hydroshare.create_account(
             'admin@gmail.com',
             username='admin',
@@ -168,8 +177,18 @@ class BasicFunction(MockIRODSTestCaseMixin, TestCase):
 
         self.george.uaccess.unshare_group_with_user(self.bikers, self.alva)
 
-        # test for django admin - admin has not been given any permission on any resource by any user
+        ## test upgrade privilege by non owners
+        # let george (owner) grant change privilege to alva (non owner)
+        self.george.uaccess.share_resource_with_user(self.bikes, self.alva, PrivilegeCodes.CHANGE)
+        self.assertTrue(self.bikes.raccess.get_combined_privilege(self.alva) == PrivilegeCodes.CHANGE)
+        # let alva (non owner) grant view privilege to john (non owner)
+        self.alva.uaccess.share_resource_with_user(self.bikes, self.john, PrivilegeCodes.VIEW)
+        self.assertTrue(self.bikes.raccess.get_combined_privilege(self.john) == PrivilegeCodes.VIEW)
+        # let alva (non owner) grant change privilege (upgrade) to john (non owner)
+        self.alva.uaccess.share_resource_with_user(self.bikes, self.john, PrivilegeCodes.CHANGE)
+        self.assertTrue(self.bikes.raccess.get_combined_privilege(self.john) == PrivilegeCodes.CHANGE)
 
+        ## test for django admin - admin has not been given any permission on any resource by any user
         # test django admin has ownership permission over any resource even when not owning a resource
         self.assertFalse(self.admin.uaccess.owns_resource(self.bikes))
         self.assertTrue(self.bikes.raccess.get_combined_privilege(self.admin) == PrivilegeCodes.OWNER)
@@ -229,6 +248,33 @@ class BasicFunction(MockIRODSTestCaseMixin, TestCase):
         self.assertTrue(self.bikers.gaccess.get_members().count(), 1)
         self.assertEqual(self.alva.uaccess.get_number_of_owned_groups(), 0)
 
+    def test_share_inactive_user(self):
+        """
+        Inactive grantor can't grant permission
+        Inactive grantee can't be granted permission
+        """
+        self.assertTrue(self.bikes.raccess.get_combined_privilege(self.alva) == PrivilegeCodes.NONE)
+        self.assertTrue(self.bikes.raccess.get_effective_privilege(self.alva) == PrivilegeCodes.NONE)
+        ## inactive users can't be granted access
+        # set john to an inactive user
+        self.john.is_active = False
+        self.john.save()
+        self.assertRaises(Exception, lambda: self.george.uaccess.share_resource_with_user(self.bikes, self.john,
+                                                                                          PrivilegeCodes.CHANGE))
+
+        self.john.is_active = True
+        self.john.save()
+        ## inactive grantor can't grant access
+        # let first grant John access privilege
+        self.george.uaccess.share_resource_with_user(self.bikes, self.john, PrivilegeCodes.CHANGE)
+        self.assertTrue(self.bikes.raccess.get_combined_privilege(self.john) == PrivilegeCodes.CHANGE)
+        self.assertTrue(self.bikes.raccess.get_effective_privilege(self.john) == PrivilegeCodes.CHANGE)
+        self.john.is_active = False
+        self.john.save()
+        self.assertRaises(Exception, lambda: self.john.uaccess.share_resource_with_user(self.bikes, self.alva,
+                                                                                        PrivilegeCodes.VIEW))
+        self.john.is_active = True
+        self.john.save()
 
 def match_lists(l1, l2):
     """ return true if two lists contain the same content
@@ -953,6 +999,15 @@ class T05ShareResource(MockIRODSTestCaseMixin, TestCase):
             groups=[]
         )
 
+        # use this as non owner
+        self.mouse = hydroshare.create_account(
+            'mouse@gmail.com',
+            username='mouse',
+            first_name='first_name_mouse',
+            last_name='last_name_mouse',
+            superuser=False,
+            groups=[]
+        )
         self.holes = hydroshare.create_resource(resource_type='GenericResource',
                                                 owner=self.cat,
                                                 title='all about dog holes',
@@ -1475,7 +1530,7 @@ class T05ShareResource(MockIRODSTestCaseMixin, TestCase):
         holes = self.holes
         dog = self.dog
         cat = self.cat
-
+        mouse = self.mouse
         # initial state
         self.assertTrue(match_lists([cat], holes.raccess.get_owners()),
                         "error in resource owners listing")
@@ -1677,6 +1732,27 @@ class T05ShareResource(MockIRODSTestCaseMixin, TestCase):
         self.assertFalse(dog.uaccess.can_share_resource(holes, PrivilegeCodes.OWNER))
         self.assertFalse(dog.uaccess.can_share_resource(holes, PrivilegeCodes.CHANGE))
         self.assertFalse(dog.uaccess.can_share_resource(holes, PrivilegeCodes.VIEW))
+
+        # set edit privilege for mouse on holes
+        self.cat.uaccess.share_resource_with_user(holes, mouse, PrivilegeCodes.CHANGE)
+        self.assertTrue(self.holes.raccess.get_combined_privilege(self.mouse) == PrivilegeCodes.CHANGE)
+
+        # set edit privilege for dog on holes
+        self.cat.uaccess.share_resource_with_user(holes, dog, PrivilegeCodes.CHANGE)
+        self.assertTrue(self.holes.raccess.get_combined_privilege(self.dog) == PrivilegeCodes.CHANGE)
+
+        # non owner (mouse) should not be able to downgrade privilege of dog from edit/change
+        # (originally granted by cat) to view
+        self.assertRaises(Exception, lambda: self.mouse.uaccess.share_resource_with_user(holes, dog, PrivilegeCodes.VIEW))
+
+        # non owner (mouse) should be able to downgrade privilege of a user (dog) originally granted by the same
+        # non owner (mouse)
+        self.cat.uaccess.unshare_resource_with_user(holes, dog)
+        self.assertTrue(self.holes.raccess.get_combined_privilege(self.dog) == PrivilegeCodes.NONE)
+        self.mouse.uaccess.share_resource_with_user(holes, dog, PrivilegeCodes.CHANGE)
+        self.assertTrue(self.holes.raccess.get_combined_privilege(self.dog) == PrivilegeCodes.CHANGE)
+        self.mouse.uaccess.share_resource_with_user(holes, dog, PrivilegeCodes.VIEW)
+        self.assertTrue(self.holes.raccess.get_combined_privilege(self.dog) == PrivilegeCodes.VIEW)
 
         # django admin should be able to downgrade privilege
         self.cat.uaccess.share_resource_with_user(holes, dog, PrivilegeCodes.OWNER)
@@ -3601,3 +3677,136 @@ class T15CreateGroup(MockIRODSTestCaseMixin, TestCase):
         self.assertTrue(self.admin.uaccess.can_view_group(meowers))
         self.assertTrue(self.admin.uaccess.can_change_group(meowers))
         self.assertFalse(self.admin.uaccess.owns_group(meowers))
+
+
+class T11ExplicitGet(MockIRODSTestCaseMixin, TestCase):
+    def setUp(self):
+        super(T11ExplicitGet, self).setUp()
+        global_reset()
+
+        self.group, _ = Group.objects.get_or_create(name='Hydroshare Author')
+        self.A_user = hydroshare.create_account(
+            'a_user@gmail.com',
+            username='A',
+            first_name='A First',
+            last_name='A Last',
+            superuser=False,
+            groups=[]
+        )
+
+        self.B_user = hydroshare.create_account(
+            'b_user@gmail.com',
+            username='B',
+            first_name='B First',
+            last_name='B Last',
+            superuser=False,
+            groups=[]
+        )
+
+        self.C_user = hydroshare.create_account(
+            'c_user@gmail.com',
+            username='C',
+            first_name='C First',
+            last_name='C Last',
+            superuser=False,
+            groups=[]
+        )
+
+        self.r1_resource = hydroshare.create_resource(resource_type='GenericResource',
+                                                      owner=self.A_user,
+                                                      title='R1',
+                                                      metadata=[],)
+
+        self.r2_resource = hydroshare.create_resource(resource_type='GenericResource',
+                                                      owner=self.A_user,
+                                                      title='R2',
+                                                      metadata=[],)
+
+        self.r3_resource = hydroshare.create_resource(resource_type='GenericResource',
+                                                      owner=self.A_user,
+                                                      title='R3',
+                                                      metadata=[],)
+
+    def test_01_resource_unshared_state(self):
+        """Resources cannot be accessed by users with no access"""
+        A_user = self.A_user
+        B_user = self.B_user
+        C_user = self.C_user
+        r1_resource = self.r1_resource
+        r2_resource = self.r2_resource
+        r3_resource = self.r3_resource
+
+        A_user.uaccess.share_resource_with_user(r1_resource, C_user, PrivilegeCodes.OWNER)
+        A_user.uaccess.share_resource_with_user(r2_resource, C_user, PrivilegeCodes.OWNER)
+        A_user.uaccess.share_resource_with_user(r3_resource, C_user, PrivilegeCodes.OWNER)
+        foo = A_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.OWNER)
+        self.assertTrue(match_lists(foo, [r1_resource, r2_resource, r3_resource]))
+        foo = A_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.CHANGE)
+        self.assertTrue(match_lists(foo, []))
+        foo = A_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.VIEW)
+        self.assertTrue(match_lists(foo, []))
+        foo = C_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.OWNER)
+        self.assertTrue(match_lists(foo, [r1_resource, r2_resource, r3_resource]))
+        foo = C_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.CHANGE)
+        self.assertTrue(match_lists(foo, []))
+        foo = C_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.VIEW)
+        self.assertTrue(match_lists(foo, []))
+
+        A_user.uaccess.share_resource_with_user(r1_resource, B_user, PrivilegeCodes.OWNER)
+        A_user.uaccess.share_resource_with_user(r2_resource, B_user, PrivilegeCodes.CHANGE)
+        A_user.uaccess.share_resource_with_user(r3_resource, B_user, PrivilegeCodes.VIEW)
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.OWNER)
+        self.assertTrue(match_lists(foo, [r1_resource]))
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.CHANGE)
+        self.assertTrue(match_lists(foo, [r2_resource]))
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.VIEW)
+        self.assertTrue(match_lists(foo, [r3_resource]))
+
+        # higher privileges are deleted when lower privileges are granted
+        C_user.uaccess.share_resource_with_user(r1_resource, B_user, PrivilegeCodes.VIEW)
+        C_user.uaccess.share_resource_with_user(r2_resource, B_user, PrivilegeCodes.VIEW)
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.OWNER)
+        self.assertTrue(match_lists(foo, []))    # [r1_resource]
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.CHANGE)
+        self.assertTrue(match_lists(foo, []))    # [r2_resource]
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.VIEW)
+
+        self.assertTrue(match_lists(foo, [r1_resource, r2_resource, r3_resource]))
+        C_user.uaccess.share_resource_with_user(r1_resource, B_user, PrivilegeCodes.CHANGE)
+        C_user.uaccess.share_resource_with_user(r2_resource, B_user, PrivilegeCodes.CHANGE)
+        C_user.uaccess.share_resource_with_user(r3_resource, B_user, PrivilegeCodes.CHANGE)
+
+        # higher privilege gets deleted when a lower privilege is granted
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.OWNER)
+        self.assertTrue(match_lists(foo, []))    # [r1_resource]
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.CHANGE)
+        self.assertTrue(match_lists(foo, [r1_resource, r2_resource, r3_resource]))
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.VIEW)
+        self.assertTrue(match_lists(foo, []))
+
+        # go from lower privilege to higher
+        C_user.uaccess.share_resource_with_user(r1_resource, B_user, PrivilegeCodes.VIEW)
+        C_user.uaccess.share_resource_with_user(r2_resource, B_user, PrivilegeCodes.VIEW)
+        C_user.uaccess.share_resource_with_user(r3_resource, B_user, PrivilegeCodes.VIEW)
+
+        A_user.uaccess.share_resource_with_user(r1_resource, B_user, PrivilegeCodes.CHANGE)
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.CHANGE)
+        self.assertTrue(match_lists(foo, [r1_resource]))
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.VIEW)
+        self.assertTrue(match_lists(foo, [r2_resource, r3_resource]))
+
+        A_user.uaccess.share_resource_with_user(r1_resource, B_user, PrivilegeCodes.OWNER)
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.OWNER)
+        self.assertTrue(match_lists(foo, [r1_resource]))
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.VIEW)
+        self.assertTrue(match_lists(foo, [r2_resource, r3_resource]))
+
+        # go lower to higher
+        C_user.uaccess.share_resource_with_user(r1_resource, B_user, PrivilegeCodes.VIEW)
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.OWNER)
+        self.assertTrue(match_lists(foo, []))
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.CHANGE)
+        self.assertTrue(match_lists(foo, []))
+        foo = B_user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.VIEW)
+        self.assertTrue(match_lists(foo, [r1_resource, r2_resource, r3_resource]))
+

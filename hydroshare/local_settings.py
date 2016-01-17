@@ -1,6 +1,6 @@
 # DEVELOPMENT - local_settings.py
 #    - This file should be copied to ~/hydroshare/hydroshare/local_settings.py
-#    - The iRODS specific contents of this file contain username and password informaiton 
+#    - The iRODS specific contents of this file contain username and password informaiton
 #      that is used for a HydroShare proxy user
 
 import redis
@@ -26,7 +26,7 @@ RABBITMQ_HOST = os.environ.get('RABBITMQ_PORT_5672_TCP_ADDR', 'localhost')
 RABBITMQ_PORT = '5672'
 
 REDIS_HOST = os.environ.get('REDIS_PORT_6379_TCP_ADDR', 'localhost')
-REDIS_PORT = 6379 
+REDIS_PORT = 6379
 POSTGIS_HOST = os.environ.get('POSTGIS_PORT_5432_TCP_ADDR', 'localhost')
 POSTGIS_PORT = 5432
 POSTGIS_DB = os.environ.get('POSTGIS_DB', 'postgres')
@@ -45,7 +45,7 @@ PERMISSIONS_DB= redis.Redis(
     host=REDIS_HOST,
     port=REDIS_PORT,
     db=6)
-   
+
 
 IPYTHON_SETTINGS=[]
 IPYTHON_BASE='/home/docker/hydroshare/static/media/ipython-notebook'
@@ -80,7 +80,7 @@ CARTO_HOME='/home/docker/node_modules/carto'
 
 
 USE_SOUTH = False
-SITE_TITLE = "Hydroshare"
+SITE_TITLE = "HydroShare"
 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
@@ -126,17 +126,11 @@ IRODS_BAGIT_RULE='hydroshare/irods/ruleGenerateBagIt_HS.r'
 IRODS_BAGIT_PATH = 'bags'
 IRODS_BAGIT_POSTFIX = 'zip'
 
-# Email configuration - localhost
-# Run from second terminal: python -m smtpd -n -c DebuggingServer localhost:1025
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'localhost'
-EMAIL_PORT = 1025
-
-# Email configuration - gmail - reference: https://github.com/hydroshare/hydroshare/wiki/hydroshare_email_using_gmail
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST_USER = 'YOUR_GMAIL_ACCOUNT@gmail.com'
-# EMAIL_HOST_PASSWORD = 'APP_SPECIFIC_PASSWORD'
-# EMAIL_HOST = 'smtp.gmail.com'
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+# Email configuration
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+#EMAIL_HOST_USER = ''
+#EMAIL_HOST_PASSWORD = ''
+#EMAIL_HOST = ''
+#EMAIL_PORT = ''
+#EMAIL_USE_TLS = True
+#DEFAULT_FROM_EMAIL = ''

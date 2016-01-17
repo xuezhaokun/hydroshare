@@ -158,6 +158,7 @@ def create_account(
 
     from django.contrib.auth.models import User, Group
     from hs_access_control.models import UserAccess
+    from hs_labels.models import UserLabels
 
     username = username if username else email
 
@@ -192,6 +193,8 @@ def create_account(
 
     user_access = UserAccess(user=u)
     user_access.save()
+    user_labels = UserLabels(user=u)
+    user_labels.save()
     return u
 
 
@@ -542,6 +545,7 @@ def get_public_groups():
         """
         return Group.objects.filter(gaccess__public=True)
 
+
 def get_resource_list(creator=None,
         group=None, user=None, owner=None,
         from_date=None, to_date=None,
@@ -605,7 +609,10 @@ def get_resource_list(creator=None,
     q = []
 
     if type:
-        q.append(Q(resource_type=type[0]))
+        query = Q(resource_type=type[0])
+        for t in type[1:]:
+            query = query | Q(resource_type=t)
+        q.append(query)
 
     if published:
         q.append(Q(doi__isnull=False))

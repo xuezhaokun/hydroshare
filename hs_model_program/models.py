@@ -94,6 +94,10 @@ class ModelProgramResource(BaseResource):
         # all file types are supported
         return ('.*')
 
+    @classmethod
+    def has_required_content_files(self):
+        return True
+
 processor_for(ModelProgramResource)(resource_processor)
 
 
@@ -111,6 +115,48 @@ class ModelProgramMetaData(CoreMetaData):
         # add the name of any additional element to the list
         elements.append('MpMetadata')
         return elements
+
+
+    def has_all_required_elements(self):
+        """
+        Validates the model program metadata elements based on the following usecases:
+        (1) Copy or original model resource
+            * Software or Engine are required
+            * Version is required
+            * Release date is required
+            * OS is required
+        (2) Reference to a model hosted elsewhere
+            * Website is required
+            * Version is required
+            * Release date is required
+            * OS is required
+
+        :return: true or false
+        """
+
+        if not (self.program.modelVersion and self.program.modelReleaseDate and self.program.modelOperatingSystem):
+            return 0
+
+        if not (self.program.modelWebsite or (self.program.modelEngine or self.program.modelSoftware)):
+            return 0
+
+        return 1
+
+    def get_required_missing_elements(self):
+        # get the generic missing elements
+        missing_required_elements = super(ModelProgramMetaData, self).get_required_missing_elements()
+
+        # add resource specific missing elements
+        if not self.program.modelVersion:
+            missing_required_elements.append('ModelVersion')
+        if not self.program.modelReleaseDate:
+            missing_required_elements.append('ModelReleaseDate')
+        if not self.program.modelOperatingSystem:
+            missing_required_elements.append('ModelOperatingSystem')
+        if not (self.program.modelWebsite or (self.program.modelEngine or self.program.modelSoftware)):
+            missing_required_elements.append('One of the following (1) ModelWebsite, (2) ModelEngine or ModelSoftware')
+
+        return missing_required_elements
 
     def get_xml(self):
 

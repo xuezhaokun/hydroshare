@@ -154,7 +154,7 @@ class ModelProgramMetaData(CoreMetaData):
         if not self.program.modelOperatingSystem:
             missing_required_elements.append('ModelOperatingSystem')
         if not (self.program.modelWebsite or (self.program.modelEngine or self.program.modelSoftware)):
-            missing_required_elements.append('One of the following (1) ModelWebsite, (2) ModelEngine or ModelSoftware')
+            missing_required_elements.append('One of the following: (1) ModelWebsite, (2) either ModelEngine or ModelSoftware')
 
         return missing_required_elements
 

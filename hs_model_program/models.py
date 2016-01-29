@@ -123,18 +123,14 @@ class ModelProgramMetaData(CoreMetaData):
         (1) Copy or original model resource
             * Software or Engine are required
             * Version is required
-            * Release date is required
-            * OS is required
         (2) Reference to a model hosted elsewhere
             * Website is required
             * Version is required
-            * Release date is required
-            * OS is required
 
         :return: true or false
         """
 
-        if not (self.program.modelVersion and self.program.modelReleaseDate and self.program.modelOperatingSystem):
+        if not (self.program.modelVersion):
             return 0
 
         if not (self.program.modelWebsite or (self.program.modelEngine or self.program.modelSoftware)):
@@ -149,10 +145,6 @@ class ModelProgramMetaData(CoreMetaData):
         # add resource specific missing elements
         if not self.program.modelVersion:
             missing_required_elements.append('ModelVersion')
-        if not self.program.modelReleaseDate:
-            missing_required_elements.append('ModelReleaseDate')
-        if not self.program.modelOperatingSystem:
-            missing_required_elements.append('ModelOperatingSystem')
         if not (self.program.modelWebsite or (self.program.modelEngine or self.program.modelSoftware)):
             missing_required_elements.append('One of the following: (1) ModelWebsite, (2) either ModelEngine or ModelSoftware')
 

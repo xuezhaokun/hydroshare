@@ -33,7 +33,12 @@
                         {% endif %}
                     </ul>
                 {%  endif %}
-                {%  if not cm.has_required_content_files %}
+                {% if cm.resource_type == "DFCWorkflowResource" %}
+                    {% if not cm.has_required_content_files %}
+                        <br>
+                        <span>Workflow file (.mss) and Parameter file (.mpf) are required to publish the resource or make the resource public or discoverable.</span>
+                    {% endif %}
+                {%  elif not cm.has_required_content_files %}
                         <br>
                         <span>Content files are required to publish the resource or make the resource public or discoverable.</span>
                 {% endif %}

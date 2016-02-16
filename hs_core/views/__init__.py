@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group, User
 from django.contrib.sites.models import Site
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, PermissionDenied
 from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import get_object_or_404, render_to_response, render
 from django.core import exceptions as ex
@@ -21,7 +21,7 @@ import autocomplete_light
 from inplaceeditform.commons import get_dict_from_obj, apply_filters
 from inplaceeditform.views import _get_http_response, _get_adaptor
 from django_irods.storage import IrodsStorage
-from hs_access_control.models import PrivilegeCodes, HSAccessException
+from hs_access_control.models import PrivilegeCodes
 
 from django_irods.icommands import SessionException
 from hs_core import hydroshare
@@ -29,6 +29,7 @@ from hs_core.hydroshare import get_resource_list
 from hs_core.hydroshare.utils import get_resource_by_shortkey, resource_modified
 from .utils import authorize, upload_from_irods
 from hs_core.models import BaseResource, GenericResource, resource_processor, CoreMetaData
+from hs_core.hydroshare.resource import METADATA_STATUS_SUFFICIENT, METADATA_STATUS_INSUFFICIENT
 
 from . import resource_rest_api
 from . import user_rest_api
@@ -154,9 +155,9 @@ def add_metadata_element(request, shortkey, element_name, *args, **kwargs):
     if request.is_ajax():
         if is_add_success:
             if res.metadata.has_all_required_elements():
-                metadata_status = "Sufficient to make public"
+                metadata_status = METADATA_STATUS_SUFFICIENT
             else:
-                metadata_status = "Insufficient to make public"
+                metadata_status = METADATA_STATUS_INSUFFICIENT
 
             if element_name == 'subject':
                 ajax_response_data = {'status': 'success', 'element_name': element_name, 'metadata_status': metadata_status}
@@ -202,9 +203,9 @@ def update_metadata_element(request, shortkey, element_name, element_id, *args, 
     if request.is_ajax():
         if is_update_success:
             if res.metadata.has_all_required_elements():
-                metadata_status = "Sufficient to make public"
+                metadata_status = METADATA_STATUS_SUFFICIENT
             else:
-                metadata_status = "Insufficient to make public"
+                metadata_status = METADATA_STATUS_INSUFFICIENT
 
             ajax_response_data = {'status': 'success', 'element_name': element_name, 'metadata_status': metadata_status}
             return HttpResponse(json.dumps(ajax_response_data))
@@ -251,10 +252,13 @@ def delete_resource(request, shortkey, *args, **kwargs):
 def publish(request, shortkey, *args, **kwargs):
     res, _, _ = authorize(request, shortkey, edit=True, full=True, superuser=True)
 
-    hydroshare.publish_resource(shortkey)
-    resource_modified(res, request.user)
+    try:
+        hydroshare.publish_resource(request.user, shortkey)
+    except ValidationError as exp:
+        request.session['validation_error'] = exp.message
+    else:
+        request.session['just_published'] = True
     return HttpResponseRedirect(request.META['HTTP_REFERER'])
-
 
 # TOD0: this view function needs refactoring once the new access control UI works
 def change_permissions(request, shortkey, *args, **kwargs):
@@ -334,13 +338,13 @@ def share_resource_with_user(request, shortkey, privilege, user_id, *args, **kwa
     if access_privilege != PrivilegeCodes.NONE:
         try:
             user.uaccess.share_resource_with_user(res, user_to_share_with, access_privilege)
-        except HSAccessException as exp:
+        except PermissionDenied as exp:
             status = 'error'
             err_message = exp.message
     else:
         status = 'error'
 
-    current_user_privilege = res.raccess.get_combined_privilege(user)
+    current_user_privilege = res.raccess.get_effective_privilege(user)
     if current_user_privilege == PrivilegeCodes.VIEW:
         current_user_privilege = "view"
     elif current_user_privilege == PrivilegeCodes.CHANGE:
@@ -375,13 +379,15 @@ def unshare_resource_with_user(request, shortkey, user_id, *args, **kwargs):
             user.uaccess.unshare_resource_with_user(res, user_to_unshare_with)
         else:
             # requesting user is the original grantor of privilege to user_to_unshare_with
+            # COUCH: This can raise a PermissionDenied exception without a guard such as 
+            # user.uaccess.can_undo_share_resource_with_user(res, user_to_unshare_with)
             user.uaccess.undo_share_resource_with_user(res, user_to_unshare_with)
 
         messages.success(request, "Resource unsharing was successful")
         if user == user_to_unshare_with and not res.raccess.public:
             # user has no access to the resource - redirect to resource listing page
             return HttpResponseRedirect('/my-resources/')
-    except HSAccessException as exp:
+    except PermissionDenied as exp:
         messages.error(request, exp.message)
 
     return HttpResponseRedirect(request.META['HTTP_REFERER'])
@@ -464,10 +470,6 @@ class FilterForm(forms.Form):
 @processor_for('my-resources')
 @login_required
 def my_resources(request, page):
-    # import sys
-    # sys.path.append("/home/docker/pycharm-debug")
-    # import pydevd
-    # pydevd.settrace('10.0.0.7', port=21000, suspend=False)
     user = request.user
     # get a list of resources with effective OWNER privilege
     owned_resources = user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.OWNER)
@@ -482,7 +484,7 @@ def my_resources(request, page):
     favorite_resources = list(user.ulabels.favorited_resources)
     labeled_resources = list(user.ulabels.labeled_resources)
     discovered_resources = list(user.ulabels.my_resources)
-
+    
     for res in owned_resources:
         res.owned = True
 
@@ -617,7 +619,7 @@ def _share_resource_with_user(request, frm, resource, requesting_user, privilege
     if frm.is_valid():
         try:
             requesting_user.uaccess.share_resource_with_user(resource, frm.cleaned_data['user'], privilege)
-        except HSAccessException as exp:
+        except PermissionDenied as exp:
             messages.error(request, exp.message)
     else:
         messages.error(request, frm.errors.as_json())
@@ -647,11 +649,13 @@ def _unshare_resource_with_users(request, requesting_user, users_to_unshare_with
                     requesting_user.uaccess.unshare_resource_with_user(resource, user)
                 else:
                     # requesting user is the original grantor of privilege to user
+                    # TODO from @alvacouch: This can raise a PermissionDenied exception without a guard such as 
+                    # user.uaccess.can_undo_share_resource_with_user(res, user_to_unshare_with)
                     requesting_user.uaccess.undo_share_resource_with_user(resource, user)
 
                 if requesting_user == user and not resource.raccess.public:
                     go_to_resource_listing_page = True
-            except HSAccessException as exp:
+            except PermissionDenied as exp:
                 messages.error(request, exp.message)
                 break
     return go_to_resource_listing_page

@@ -1,16 +1,18 @@
 import os.path
 import json
+import arrow
 from uuid import uuid4
 from languages_iso import languages as iso_languages
 from dateutil import parser
+from lxml import etree
 
 from django.contrib.contenttypes import generic
 from django.contrib.auth.models import User, Group
-from django.contrib.auth import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Q
 from django.db.models.signals import post_save
+from django.db import transaction
 from django.dispatch import receiver
 from django import forms
 from django.utils.timezone import now
@@ -25,6 +27,7 @@ from mezzanine.core.models import Ownable
 from mezzanine.generic.fields import CommentsField, RatingField
 from mezzanine.generic.fields import KeywordsField
 from mezzanine.conf import settings as s
+
 
 class GroupOwnership(models.Model):
     group = models.ForeignKey(Group)
@@ -83,54 +86,19 @@ class ResourcePermissionsMixin(Ownable):
         return self.can_change(request)
 
     def can_delete(self, request):
-        user = get_user(request)
-        if user.is_authenticated():
-            if user.is_superuser or self.raccess.owners.filter(pk=user.pk).exists():
-                return True
-            else:
-                return False
-        else:
-            return False
+        # have to do import locally to avoid circular import
+        from hs_core.views.utils import authorize
+        return authorize(request, self.short_id, res=self, full=True, superuser=True, raises_exception=False)[1]
 
     def can_change(self, request):
-        user = get_user(request)
-
-        if user.is_authenticated():
-            if user.is_superuser:
-                return True
-            elif self.raccess.owners.filter(pk=user.pk).exists():
-                return True
-            elif self.raccess.edit_users.filter(pk=user.pk).exists():
-                return True
-            elif self.raccess.edit_groups.filter(pk__in=set(g.pk for g in user.groups.all())):
-                return True
-            else:
-                return False
-        else:
-            return False
+        # have to do import locally to avoid circular import
+        from hs_core.views.utils import authorize
+        return authorize(request, self.short_id, res=self, edit=True, superuser=True, raises_exception=False)[1]
 
     def can_view(self, request):
-        user = get_user(request)
-
-        if self.raccess.public or self.raccess.discoverable:
-            return True
-        if user.is_authenticated():
-            if user.is_superuser:
-                return True
-            elif self.raccess.owners.filter(pk=user.pk).exists():
-                return True
-            elif self.raccess.edit_users.filter(pk=user.pk).exists():
-                return True
-            elif self.raccess.view_users.filter(pk=user.pk).exists():
-                return True
-            elif self.raccess.edit_groups.filter(pk__in=set(g.pk for g in user.groups.all())):
-                return True
-            elif self.raccess.view_groups.filter(pk__in=set(g.pk for g in user.groups.all())):
-                return True
-            else:
-                return False
-        else:
-            return False
+        # have to do import locally to avoid circular import
+        from hs_core.views.utils import authorize
+        return authorize(request, self.short_id, res=self, view=True, superuser=True, raises_exception=False)[1]
 
 # this should be used as the page processor for anything with pagepermissionsmixin
 # page_processor_for(MyPage)(ga_resources.views.page_permissions_page_processor)
@@ -154,6 +122,11 @@ def page_permissions_page_processor(request, page):
     editors = cm.raccess.edit_users.exclude(pk__in=owners)
     viewers = cm.raccess.view_users.exclude(pk__in=editors).exclude(pk__in=owners)
 
+    show_manage_access = False
+    if not cm.raccess.published and \
+        (is_owner_user or (cm.raccess.shareable and (is_view_user or is_edit_user))):
+        show_manage_access = True
+
     return {
         'resource_type': cm._meta.verbose_name,
         'bag': cm.bags.first(),
@@ -163,7 +136,8 @@ def page_permissions_page_processor(request, page):
         "is_owner_user": is_owner_user,
         "is_edit_user": is_edit_user,
         "is_view_user": is_view_user,
-        "can_change_resource_flags": can_change_resource_flags
+        "can_change_resource_flags": can_change_resource_flags,
+        "show_manage_access": show_manage_access
     }
 
 
@@ -468,7 +442,7 @@ class Date(AbstractMetaDataElement):
             if not kwargs['type'] in dict(cls.DATE_TYPE_CHOICES).keys():
                 raise ValidationError('Invalid date type:%s' % kwargs['type'])
 
-             # get matching resource
+            # get matching resource
             metadata_obj = kwargs['content_object']
             resource = BaseResource.objects.filter(object_id=metadata_obj.id).first()
 
@@ -476,14 +450,19 @@ class Date(AbstractMetaDataElement):
                 if 'end_date' in kwargs:
                     del kwargs['end_date']
 
+            if 'start_date' in kwargs:
+                if isinstance(kwargs['start_date'], basestring):
+                    kwargs['start_date'] = parser.parse(kwargs['start_date'])
             if kwargs['type'] == 'published':
                 if not resource.raccess.published:
                     raise ValidationError("Resource is not published yet.")
             elif kwargs['type'] == 'available':
                 if not resource.raccess.public:
-                    raise ValidationError("Resource has not been shared yet.")
+                    raise ValidationError("Resource has not been made public yet.")
             elif kwargs['type'] == 'valid':
                 if 'end_date' in kwargs:
+                    if isinstance(kwargs['end_date'], basestring):
+                        kwargs['end_date'] = parser.parse(kwargs['end_date'])
                     if kwargs['start_date'] > kwargs['end_date']:
                         raise ValidationError("For date type valid, end date must be a date after the start date.")
 
@@ -497,6 +476,8 @@ class Date(AbstractMetaDataElement):
         dt = Date.objects.get(id=element_id)
 
         if 'start_date' in kwargs:
+            if isinstance(kwargs['start_date'], basestring):
+                kwargs['start_date'] = parser.parse(kwargs['start_date'])
             if dt.type == 'created':
                 raise ValidationError("Resource creation date can't be changed")
             elif dt.type == 'modified':
@@ -504,6 +485,8 @@ class Date(AbstractMetaDataElement):
                 dt.save()
             elif dt.type == 'valid':
                 if 'end_date' in kwargs:
+                    if isinstance(kwargs['end_date'], basestring):
+                        kwargs['end_date'] = parser.parse(kwargs['end_date'])
                     if kwargs['start_date'] > kwargs['end_date']:
                         raise ValidationError("For date type valid, end date must be a date after the start date.")
                     dt.start_date = kwargs['start_date']
@@ -542,6 +525,7 @@ class Relation(AbstractMetaDataElement):
         ('isVersionOf', 'Version Of'),
         ('isDataFor', 'Data For'),
         ('cites', 'Cites'),
+        ('isDescribedBy', 'Described By'),
     )
 
     # HS_RELATION_TERMS contains hydroshare custom terms that are not Dublin Core terms
@@ -689,76 +673,44 @@ class Publisher(AbstractMetaDataElement):
 
     @classmethod
     def create(cls, **kwargs):
-        if 'name' in kwargs:
-            metadata_obj = kwargs['content_object']
-            # get matching resource
-            resource = BaseResource.objects.filter(object_id=metadata_obj.id).first()
-
-            if not resource.raccess.public and resource.raccess.published:
-                raise ValidationError("Publisher element can't be created for a resource that is not yet shared "
-                                      "nor published.")
-
-            if kwargs['name'].lower() == 'hydroshare':
-                if not resource.files.all():
-                    raise ValidationError("Hydroshare can't be the publisher for a resource that has no content "
-                                          "files.")
-
-                kwargs['name'] = 'HydroShare'
-                kwargs['url'] = 'http://hydroshare.org'
-
-            return super(Publisher, cls).create(**kwargs)
-
-        else:
-            raise ValidationError("Name of publisher is missing.")
-
-    @classmethod
-    def update(cls, element_id, **kwargs):
-        pub = Publisher.objects.get(id=element_id)
-
         metadata_obj = kwargs['content_object']
         # get matching resource
         resource = BaseResource.objects.filter(object_id=metadata_obj.id).first()
+        if not resource.raccess.published:
+            raise ValidationError("Publisher element can't be created for a resource that is not yet published.")
 
-        if 'name' in kwargs:
-            if pub.name.lower() != kwargs['name'].lower():
-                if pub.name.lower() == 'hydroshare':
-                    if resource.files.all():
-                        raise ValidationError("Publisher 'HydroShare' can't be changed for a resource that has "
-                                              "content files.")
-                elif kwargs['name'].lower() == 'hydroshare':
-                    if not resource.files.all():
-                        raise ValidationError("'HydroShare' can't be a publisher for a resource that has no "
-                                              "content files.")
+        publisher_CUAHSI = "Consortium of Universities for the Advancement of Hydrologic Science, Inc. (CUAHSI)"
 
-                if resource.files.all():
-                    kwargs['name'] = 'HydroShare'
+        if resource.files.all():
+            # if the resource has content files, set CUAHSI as the publisher
+            if 'name' in kwargs:
+                if kwargs['name'].lower() != publisher_CUAHSI.lower():
+                    raise ValidationError("Invalid publisher name")
 
-        if 'url' in kwargs:
-            if pub.url != kwargs['url']:
-                # make sure we are not changing the url for hydroshare publisher
-                if pub.name.lower() == 'hydroshare':
-                    kwargs['url'] = 'http://hydroshare.org'
+            kwargs['name'] = publisher_CUAHSI
+            if 'url' in kwargs:
+                if kwargs['url'].lower() != 'https://www.cuahsi.org':
+                    raise ValidationError("Invalid publisher URL")
 
-        super(Publisher, cls).update(element_id, **kwargs)
+            kwargs['url'] = 'https://www.cuahsi.org'
+        else:
+            # make sure we are not setting CUAHSI as publisher for a resource that has no content files
+            if 'name' in kwargs:
+                if kwargs['name'].lower() == publisher_CUAHSI.lower():
+                    raise ValidationError("Invalid publisher name")
+            if 'url' in kwargs:
+                if kwargs['url'].lower() == 'https://www.cuahsi.org':
+                    raise ValidationError("Invalid publisher URL")
+
+        return super(Publisher, cls).create(**kwargs)
+
+    @classmethod
+    def update(cls, element_id, **kwargs):
+        raise ValidationError("Publisher element can't be updated.")
 
     @classmethod
     def remove(cls, element_id):
-        pub = Publisher.objects.get(id=element_id)
-
-        # get matching resource
-        resource = BaseResource.objects.filter(object_id=pub.content_object.id).first()
-
-        if resource.raccess.public:
-            raise ValidationError("Resource publisher can't be deleted for shared resource.")
-
-        if pub.name.lower() == 'hydroshare':
-            if resource.files.all():
-                raise ValidationError("Publisher HydroShare can't be deleted for a resource that has content files.")
-
-        if resource.raccess.public:
-            raise ValidationError("Publisher can't be deleted for a public resource.")
-
-        pub.delete()
+        raise ValidationError("Publisher element can't be deleted.")
 
 
 class Language(AbstractMetaDataElement):
@@ -1088,6 +1040,14 @@ class AbstractResource(ResourcePermissionsMixin):
     # )
 
     files = generic.GenericRelation('hs_core.ResourceFile', help_text='The files associated with this resource', for_concrete_model=True)
+
+    file_unpack_status = models.CharField(max_length=7,
+                                          blank=True, null=True,
+                                          choices=(('Pending', 'Pending'), ('Running', 'Running'),
+                                                   ('Done', 'Done'), ('Error', 'Error'))
+                                          )
+    file_unpack_message = models.TextField(blank=True, null=True)
+
     bags = generic.GenericRelation('hs_core.Bags', help_text='The bagits created from versions of this resource', for_concrete_model=True)
     short_id = models.CharField(max_length=32, default=short_id, db_index=True)
     doi = models.CharField(max_length=1024, blank=True, null=True, db_index=True,
@@ -1118,8 +1078,6 @@ class AbstractResource(ResourcePermissionsMixin):
 
     def delete(self, using=None):
         from hydroshare import hs_bagit
-        from hs_access_control.models import UserResourcePrivilege, GroupResourcePrivilege
-        from hs_labels.models import UserResourceLabels
         for fl in self.files.all():
             fl.resource_file.delete()
 
@@ -1127,12 +1085,6 @@ class AbstractResource(ResourcePermissionsMixin):
 
         self.metadata.delete_all_elements()
         self.metadata.delete()
-
-        # delete related access controls records
-        access_resource = self.raccess
-        UserResourcePrivilege.objects.filter(resource=access_resource).delete()
-        GroupResourcePrivilege.objects.filter(resource=access_resource).delete()
-        access_resource.delete()
 
         super(AbstractResource, self).delete()
 
@@ -1215,8 +1167,11 @@ class AbstractResource(ResourcePermissionsMixin):
         citation_str_lst.append(" ({year}). ".format(year=citation_date.start_date.year))
         citation_str_lst.append(self.metadata.title.value)
 
+        isPendingActivation = False
         if self.metadata.identifiers.all().filter(name="doi"):
             hs_identifier = self.metadata.identifiers.all().filter(name="doi")[0]
+            if self.doi.find('pending') >= 0 or self.doi.find('failure') >= 0:
+                isPendingActivation = True
         elif self.metadata.identifiers.all().filter(name="hydroShareIdentifier"):
             hs_identifier = self.metadata.identifiers.all().filter(name="hydroShareIdentifier")[0]
         else:
@@ -1233,6 +1188,9 @@ class AbstractResource(ResourcePermissionsMixin):
                                     repl_rel_value=repl_rel.value, creation_date=date_str, url=hs_identifier.url))
         else:
             citation_str_lst.append(", HydroShare, {url}".format(url=hs_identifier.url))
+
+        if isPendingActivation:
+            citation_str_lst.append(", DOI for this published resource is pending activation.")
 
         return ''.join(citation_str_lst)
 
@@ -1335,6 +1293,53 @@ class BaseResource(Page, AbstractResource):
     def can_view(self, request):
         return AbstractResource.can_view(self, request)
 
+    # create crossref deposit xml for resource publication
+    def get_crossref_deposit_xml(self, pretty_print=True):
+        # importing here to avoid circular import problem
+        from hydroshare.resource import get_activated_doi
+
+        xsi = "http://www.w3.org/2001/XMLSchema-instance"
+        schemaLocation = 'http://www.crossref.org/schema/4.3.6 http://www.crossref.org/schemas/crossref4.3.6.xsd'
+        ns = "http://www.crossref.org/schema/4.3.6"
+        ROOT = etree.Element('{%s}doi_batch' % ns, version="4.3.6", nsmap={None:ns},
+                             attrib={"{%s}schemaLocation" % xsi : schemaLocation})
+
+        # get the resource object associated with this metadata container object - needed to get the verbose_name
+
+        # create the head sub element
+        head = etree.SubElement(ROOT, 'head')
+        etree.SubElement(head, 'doi_batch_id').text = self.short_id
+        etree.SubElement(head, 'timestamp').text = arrow.get(self.updated).format("YYYYMMDDHHmmss")
+        depositor = etree.SubElement(head, 'depositor')
+        etree.SubElement(depositor, 'depositor_name').text = 'HydroShare'
+        etree.SubElement(depositor, 'email_address').text = settings.DEFAULT_SUPPORT_EMAIL
+        # The organization that owns the information being registered.
+        etree.SubElement(head, 'registrant').text = 'Consortium of Universities for the Advancement of Hydrologic Science, Inc. (CUAHSI)'
+
+        # create the body sub element
+        body = etree.SubElement(ROOT, 'body')
+        # create the database sub element
+        db = etree.SubElement(body, 'database')
+        # create the database_metadata sub element
+        db_md = etree.SubElement(db, 'database_metadata', language="en")
+        # titles is required element for database_metadata
+        titles = etree.SubElement(db_md, 'titles')
+        etree.SubElement(titles, 'title').text = "HydroShare Resources"
+        # create the dataset sub element, dataset_type can be record or collection, set it to collection for HydroShare resources
+        dataset = etree.SubElement(db, 'dataset', dataset_type="collection")
+        ds_titles = etree.SubElement(dataset, 'titles')
+        etree.SubElement(ds_titles, 'title').text = self.metadata.title.value
+        # doi_data is required element for dataset
+        doi_data = etree.SubElement(dataset, 'doi_data')
+        res_doi =  get_activated_doi(self.doi)
+        idx = res_doi.find('10.4211')
+        if idx >= 0:
+            res_doi = res_doi[idx:]
+        etree.SubElement(doi_data, 'doi').text = res_doi
+        etree.SubElement(doi_data, 'resource').text = self.metadata.identifiers.all().filter(name='hydroShareIdentifier')[0].url
+
+        return '<?xml version="1.0" encoding="UTF-8"?>\n' + etree.tostring(ROOT, pretty_print=pretty_print)
+
     @classmethod
     def get_supported_upload_file_types(cls):
         # all file types are supported
@@ -1347,6 +1352,7 @@ class BaseResource(Page, AbstractResource):
     @classmethod
     def can_have_files(cls):
         return True
+
 
 
 class GenericResource(BaseResource):
@@ -1504,8 +1510,46 @@ class CoreMetaData(models.Model):
         self.sources.all().delete()
         self.relations.all().delete()
 
+    # this method needs to be overriden by any subclass of this class
+    # to allow updating of extended (resource specific) metadata
+    def update(self, metadata):
+        # updating non-repeatable elements
+        with transaction.atomic():
+            for element_name in ('title', 'description', 'language', 'rights'):
+                for dict_item in metadata:
+                    if element_name in dict_item:
+                        element = getattr(self, element_name, None)
+                        if element:
+                            self.update_element(element_id=element.id, element_model_name=element_name,
+                                                **dict_item[element_name])
+                        else:
+                            self.create_element(element_model_name=element_name, **dict_item[element_name])
+
+            for element_name in ('creator', 'contributor', 'coverage', 'source', 'relation', 'subject'):
+                self._update_repeatable_element(element_name=element_name, metadata=metadata)
+
+            # allow only updating or creating date element of type valid
+            element_name = 'date'
+            date_list = [date_dict for date_dict in metadata if element_name in date_dict]
+            if len(date_list) > 0:
+                for date_item in date_list:
+                    if 'type' in date_item[element_name]:
+                        if date_item[element_name]['type'] == 'valid':
+                            self.dates.filter(type='valid').delete()
+                            self.create_element(element_model_name=element_name, **date_item[element_name])
+                            break
+
+            # allow only updating or creating identifiers which does not have name value 'hydroShareIdentifier'
+            element_name = 'identifier'
+            identifier_list = [id_dict for id_dict in metadata if element_name in id_dict]
+            if len(identifier_list) > 0:
+                for id_item in identifier_list:
+                    if 'name' in id_item[element_name]:
+                        if id_item[element_name]['name'].lower() != 'hydroshareidentifier':
+                            self.identifiers.filter(name=id_item[element_name]['name']).delete()
+                            self.create_element(element_model_name=element_name, **id_item[element_name])
+
     def get_xml(self, pretty_print=True):
-        from lxml import etree
         # importing here to avoid circular import problem
         from hydroshare.utils import current_site_url, get_resource_types
 
@@ -1811,6 +1855,15 @@ class CoreMetaData(models.Model):
     def _is_valid_element(self, element_name):
         allowed_elements = [el.lower() for el in self.get_supported_element_names()]
         return element_name.lower() in allowed_elements
+
+    def _update_repeatable_element(self, element_name, metadata):
+        # make a list of dict that are for a specific element as specified by element_name
+        element_list = [element_dict for element_dict in metadata if element_name in element_dict]
+        if len(element_list) > 0:
+            elements = getattr(self, element_name + 's')
+            elements.all().delete()
+            for element in element_list:
+                self.create_element(element_model_name=element_name, **element[element_name])
 
 
 def resource_processor(request, page):

@@ -28,3 +28,12 @@ option:checked {
 .multiselect-container > li > a {
     white-space: normal;
 }
+
+input[type="radio"]{
+	margin: 0 10px 15px 10px;
+}
+
+#div_id_git input {
+    margin: 0 10px 0 10px;
+    min-width:50%;
+}

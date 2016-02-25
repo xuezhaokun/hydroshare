@@ -1,9 +1,11 @@
 __author__ = 'tonycastronova'
 
+import os
 from django.http import HttpResponse
 from hs_model_program.models import ModelProgramResource
 import json
 import datetime
+import urllib
 
 def get_model_metadata(request):
 
@@ -46,3 +48,27 @@ def get_model_metadata(request):
 
     json_data = json.dumps(metadata)
     return HttpResponse(json_data, content_type="application/json")
+
+def import_from_git(request):
+
+    # get the request data
+    r = request.GET
+
+    url = r['git_url']
+    sha = r['git_sha']
+
+    # remove the .git extension from the url
+    if url[:-4] == '.git':
+        url = url[:-4]
+
+    if sha.strip() == '':
+        sha = 'master'
+
+    url_format = '{repo}/archive/{sha}.zip'
+
+
+    full_url = url_format.format(repo=url, sha=sha)
+
+    res = urllib.urlretrieve(full_url, '/tmp/'+sha+'.zip')
+
+    print 'done'

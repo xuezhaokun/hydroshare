@@ -2,6 +2,8 @@
  * Created by tonycastronova on 10/12/15.
  */
 
+
+
 $mp_alert_error = '<div class="alert alert-danger" id="error-alert"> \
                     <button type="button" class="close" data-dismiss="alert">x</button> \
                     <strong>Error </strong> \
@@ -15,6 +17,10 @@ $(document).ready(function () {
     if(document.getElementById("id-mpmetadata") != null)
         // load jquery generated elements
         loadWidgets();
+
+        // initialize the radio button elements
+        selected_radio = $('input[name=data_radio_group]:checked')[0];
+        radioSelect(selected_radio);
 
         // initialize datepicker
         $( "#modelReleaseDate_picker" ).datepicker({
@@ -162,4 +168,69 @@ function set_metadata_terms(e){
 
     // activate the save button
     $("#resourceSpecificTab").find('.btn-primary').show();
+}
+
+function importFromGit(e){
+
+    // get the git url and sha from the form
+    var url = $(git_form_url).val();
+    var sha =$(git_form_sha).val();
+
+
+    // call django view to get model program metadata files
+    $.ajax({
+        type: "GET",
+        url: '/hsapi/_internal/import-from-git/',
+        data: {git_url: url, git_sha: sha},
+        success: function (data) {
+
+
+        },
+        error: function (data) {
+            show_error();
+        },
+        complete: function (data) {
+
+        }
+    });
+}
+
+function radioSelect(e){
+
+    var selected_radio = e.value;
+
+    var model_engine_label = $(div_id_modelEngine)[0];
+    var model_engine_multiselect = $(".div-multi-select[parent_metadata='modelEngine']")[0];
+    var model_software_label = $(div_id_modelSoftware)[0];
+    var model_software_multiselect = $(".div-multi-select[parent_metadata='modelSoftware']")[0];
+
+    var git_form_elements = $(div_id_git)[0];
+    //var git_address_textbox = $(git_form_address)[0];
+    //var git_import_button = $(git_form_import)[0];
+
+    if (selected_radio == 'content_radio'){
+        // activate engine and software form elements
+        model_engine_label.style.display = 'block';
+        model_software_label.style.display = 'block';
+        model_engine_multiselect.style.display = 'block';
+        model_software_multiselect.style.display = 'block';
+
+        // deactivate git form elements
+        git_form_elements.style.display = 'none';
+        //git_import_button.style.display = 'none';
+
+
+    }
+    else{
+        // deactivate engine and software form elements
+        model_engine_label.style.display = 'none';
+        model_software_label.style.display = 'none';
+        model_engine_multiselect.style.display = 'none';
+        model_software_multiselect.style.display = 'none';
+
+        // activate git form elements
+        git_form_elements.style.display = 'block';
+        //git_import_button.style.display = 'block';
+
+    }
 }

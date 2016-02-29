@@ -179,14 +179,20 @@
                         <li class="active col-xs-2 col-md-2">
                             <a href="#contactTab" data-toggle="tab" title="Contact">
                                 <span class="glyphicon glyphicon-user"> </span>
-                                &nbspContact
+                                &nbsp;Contact
+                            </a>
+                        </li>
+                        <li class="active col-xs-2 col-md-2">
+                            <a href="#cloudEnvTab" data-toggle="tab" title="Cloud Environment">
+                                <span class="glyphicon glyphicon-user"> </span>
+                                &nbsp;Cloud Environment
                             </a>
                         </li>
                         {% if spatial_coverage.north or spatial_coverage.northlimit or temporal_coverage or metadata_form %}
                             <li class="col-xs-2 col-md-2">
                                 <a id="coverageTabBtn" href="#coverageTab" data-toggle="tab" title="Coverage">
                                     <span class="glyphicon glyphicon-globe"></span>
-                                    &nbspCoverage
+                                    &nbsp;Coverage
                                 </a>
                             </li>
                         {% endif %}
@@ -194,7 +200,7 @@
                             <li class="col-xs-2 col-md-2">
                                 <a href="#relatedResourcesTab" data-toggle="tab" title="Related resources">
                                     <span class="glyphicon glyphicon-book"></span>
-                                    &nbspRelated Resources
+                                    &nbsp;Related Resources
                                 </a>
                             </li>
                         {% endif %}
@@ -205,7 +211,7 @@
                                     <li class="col-xs-2 col-md-2">
                                         <a href="#resourceSpecificTab" data-toggle="tab" title="Resource specific">
                                             <span class="glyphicon glyphicon-folder-close"></span>
-                                            &nbspResource Specific
+                                            &nbsp;Resource Specific
                                         </a>
                                     </li>
                                 {% endif %}
@@ -364,6 +370,13 @@
                                     </table>
                                 </div>
                             {% endif %}
+                        </div>
+                        <!-- ========= Cloud Environment TAB ========= -->
+                        <div class="tab-pane" id="cloudEnvTab">
+                            <a id="btn-cloud-env" type="button" class="btn btn-default row-selector" data-toggle="modal" data-target="#create-cloud-env-dialog">
+                                <span title='Create cloud environment using RADII' class="button-label">Create cloud environment using RADII</span>
+                                <a target="_blank" href="http://renci.org/radii/">Learn more about the RADII Collaboration-to-infrastructure project</a>
+                            </a>
                         </div>
                         <!-- ========= COVERAGE TAB ========= -->
                         {% if spatial_coverage.north or spatial_coverage.northlimit or temporal_coverage or metadata_form %}

@@ -1301,6 +1301,49 @@ class BaseResource(Page, AbstractResource):
     def can_view(self, request):
         return AbstractResource.can_view(self, request)
 
+    # create collaboration JSON object for using RADII to provision a cloud environment for the resource
+    def get_collaboration_json(self):
+        res_bag_file_path = '/{zone}/home/{uname}/bags/{res_id}.zip'.format(zone=settings.IRODS_ZONE, uname=settings.IRODS_USERNAME, res_id=self.short_id)
+        attr_data = {'resource': {"icat-server": "users.hydroshare.org",
+                                  "location": "uh",
+                                  "file-path": res_bag_file_path}}
+        data = {}
+        data['action'] = 'save'
+        data['parameters'] = {
+            "collaboration": {
+                "data-policy": {"tags":[]},
+                "entities": [
+                    {
+                        "id": "resource",
+                        "type": "datastore",
+                        "authorized-users": ["hyi"],
+                        "attributes": attr_data,
+                        "template": {"id": "hs_resource"}
+                    },
+                    {
+                        "id": "icat",
+                        "type": "external",
+                        "connectivity": {
+                            "stitchport": {"id": "bf40g"}
+                        }
+                    }
+                ],
+                "collaborators": ["hyi"],
+                "name": "hydroshare",
+                "owner": {"name": "hyi"},
+                "lifetime": 120,
+                "dataflows": [
+                    {
+                        "source": {"id": "resource"},
+                        "id": "data",
+                        "target": {"id": "icat"}
+                    }
+                ],
+                "id": "hydroshare"
+            }
+        }
+        return json.dumps(data)
+
     # create crossref deposit xml for resource publication
     def get_crossref_deposit_xml(self, pretty_print=True):
         # importing here to avoid circular import problem

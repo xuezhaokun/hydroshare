@@ -931,19 +931,18 @@ def create_cloud_env_for_resource(pk):
     if not response.status_code == status.HTTP_200_OK and not response.status_code == status.HTTP_201_CREATED:
         return HttpResponseBadRequest(content=response.text)
 
-    response = requests.post(url, auth=('hyi', 'hyi'))
+    response = requests.post(url, headers={'content-type': 'application/json'}, auth=('hyi', 'hyi'))
 
     if not response.status_code == status.HTTP_200_OK:
         return HttpResponseBadRequest(content=response.text)
 
     for step in range(10):
-        response = requests.get("http://152.54.9.88:8080/collaboration/{collab_id}".format(collab_id=pk),
-                            auth=('hyi', 'hyi'))
+        response = requests.get(url, auth=('hyi', 'hyi'))
         rjson = response.json()
         if not response.status_code == status.HTTP_200_OK:
             return HttpResponseBadRequest(content=response.text)
         elif rjson['state'] == 'active':
-            return rjson['public-ip']
+            return rjson['entities'][1]['node-groups'][0]['nodes'][0]['public-ip']
         time.sleep(10)
 
     return None

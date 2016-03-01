@@ -377,6 +377,11 @@
                                 <span title='Create cloud environment using RADII' class="button-label">Create cloud environment using RADII</span>
                                 <a target="_blank" href="http://renci.org/radii/">Learn more about the RADII Collaboration-to-infrastructure project</a>
                             </a>
+                            {% if cloud_ip %}
+                            <div>
+                                <p>Congratulations! A VM {{ cloud_ip }} has been dynamically provisioned by RADII. </p>
+                            </div>
+                            {% endif %}
                         </div>
                         <!-- ========= COVERAGE TAB ========= -->
                         {% if spatial_coverage.north or spatial_coverage.northlimit or temporal_coverage or metadata_form %}

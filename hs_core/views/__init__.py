@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 import json
-import requests
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import Group, User
@@ -13,6 +12,7 @@ from django.core import exceptions as ex
 from django.template import RequestContext
 from django.core import signing
 from django import forms
+from django.http import HttpResponseBadRequest
 
 from rest_framework.decorators import api_view
 
@@ -264,19 +264,11 @@ def publish(request, shortkey, *args, **kwargs):
 def create_cloud_env_for_resource(request, shortkey, *args, **kwargs):
     res, _, _ = authorize(request, shortkey, edit=True, full=True, superuser=True)
     try:
-        collab_json = res.get_collaboration_json()
-
-        # using HTTP to POST deposit xml file to crossref
-        put_data = {'user': 'hyi:hyi',
-                     'login_id': settings.CROSSREF_LOGIN_ID,
-                     'login_passwd': settings.CROSSREF_LOGIN_PWD
-                    }
-        # exceptions will be raised if POST request fails
-        response = requests.put("http://152.54.9.88:8080/collaboration/{collab_id}".format(collab_id=shortkey), data=put_data)
-    except ValidationError as exp:
-        request.session['validation_error'] = exp.message
+        ip = hydroshare.create_cloud_env_for_resource(shortkey)
+    except HttpResponseBadRequest as exp:
+        request.session['validation_error'] = "{code}:{content}".format(code=exp.status_code, content=exp.content)
     else:
-        request.session['cloud_env_created'] = True
+        request.session['cloud_ip'] = ip
     return HttpResponseRedirect(request.META['HTTP_REFERER'])
 
 # TOD0: this view function needs refactoring once the new access control UI works
@@ -489,7 +481,6 @@ class FilterForm(forms.Form):
 @processor_for('my-resources')
 @login_required
 def my_resources(request, page):
-    
     user = request.user
     # get a list of resources with effective OWNER privilege
     owned_resources = user.uaccess.get_resources_with_explicit_access(PrivilegeCodes.OWNER)

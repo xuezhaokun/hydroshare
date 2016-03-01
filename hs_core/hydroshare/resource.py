@@ -2,16 +2,17 @@ import os
 import zipfile
 import shutil
 import logging
-
+import time
 import requests
+import json
 
-from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files import File
 from django.core.files.uploadedfile import UploadedFile
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.conf import settings
+from django.http import HttpResponseBadRequest
 from rest_framework import status
 
 from mezzanine.generic.models import Keyword, AssignedKeyword
@@ -911,6 +912,34 @@ def resolve_doi(doi):
 
     """
     return utils.get_resource_by_doi(doi).short_id
+
+
+def create_cloud_env_for_resource(pk):
+    res = utils.get_resource_by_shortkey(pk)
+    collab_json = res.get_collaboration_json()
+    # exceptions will be raised if PUT request fails
+    response = requests.put("http://152.54.9.88:8080/collaboration/{collab_id}".format(collab_id=pk),
+                            headers={'content-type': 'application/json'},
+                            data=collab_json, auth=('hyi', 'hyi'))
+    if not response.status_code == status.HTTP_200_OK:
+        raise HttpResponseBadRequest(content=response.text)
+
+    response = requests.post("http://152.54.9.88:8080/collaboration/{collab_id}".format(collab_id=pk),
+                            auth=('hyi', 'hyi'))
+    if not response.status_code == status.HTTP_200_OK:
+        raise HttpResponseBadRequest(content=response.text)
+
+    for step in range(10):
+        response = requests.get("http://152.54.9.88:8080/collaboration/{collab_id}".format(collab_id=pk),
+                            auth=('hyi', 'hyi'))
+        rjson = response.json()
+        if not response.status_code == status.HTTP_200_OK:
+            raise HttpResponseBadRequest(content=response.text)
+        elif rjson['state'] == 'active':
+            return rjson['public-ip']
+        time.sleep(10)
+
+    return None
 
 
 def create_metadata_element(resource_short_id, element_model_name, **kwargs):

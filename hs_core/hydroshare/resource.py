@@ -917,24 +917,31 @@ def resolve_doi(doi):
 def create_cloud_env_for_resource(pk):
     res = utils.get_resource_by_shortkey(pk)
     collab_json = res.get_collaboration_json()
+    url = "http://152.54.9.88:8080/collaboration/{collab_id}".format(collab_id=pk)
     # exceptions will be raised if PUT request fails
-    response = requests.put("http://152.54.9.88:8080/collaboration/{collab_id}".format(collab_id=pk),
-                            headers={'content-type': 'application/json'},
+    response = requests.put(url, headers={'content-type': 'application/json'},
                             data=collab_json, auth=('hyi', 'hyi'))
-    if not response.status_code == status.HTTP_200_OK:
-        raise HttpResponseBadRequest(content=response.text)
 
-    response = requests.post("http://152.54.9.88:8080/collaboration/{collab_id}".format(collab_id=pk),
-                            auth=('hyi', 'hyi'))
+    if response.status_code == status.HTTP_409_CONFLICT:
+        # collaboration id already exists, delete it first, then put again
+        response = requests.delete(url, auth=('hyi', 'hyi'))
+        response = requests.put(url, headers={'content-type': 'application/json'},
+                            data=collab_json, auth=('hyi', 'hyi'))
+
+    if not response.status_code == status.HTTP_200_OK and not response.status_code == status.HTTP_201_CREATED:
+        return HttpResponseBadRequest(content=response.text)
+
+    response = requests.post(url, auth=('hyi', 'hyi'))
+
     if not response.status_code == status.HTTP_200_OK:
-        raise HttpResponseBadRequest(content=response.text)
+        return HttpResponseBadRequest(content=response.text)
 
     for step in range(10):
         response = requests.get("http://152.54.9.88:8080/collaboration/{collab_id}".format(collab_id=pk),
                             auth=('hyi', 'hyi'))
         rjson = response.json()
         if not response.status_code == status.HTTP_200_OK:
-            raise HttpResponseBadRequest(content=response.text)
+            return HttpResponseBadRequest(content=response.text)
         elif rjson['state'] == 'active':
             return rjson['public-ip']
         time.sleep(10)

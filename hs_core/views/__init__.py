@@ -263,12 +263,10 @@ def publish(request, shortkey, *args, **kwargs):
 
 def create_cloud_env_for_resource(request, shortkey, *args, **kwargs):
     res, _, _ = authorize(request, shortkey, edit=True, full=True, superuser=True)
-    try:
-        ip = hydroshare.create_cloud_env_for_resource(shortkey)
-    except HttpResponseBadRequest as exp:
-        request.session['validation_error'] = "{code}:{content}".format(code=exp.status_code, content=exp.content)
-    else:
-        request.session['cloud_ip'] = ip
+    ret = hydroshare.create_cloud_env_for_resource(shortkey)
+    if isinstance(ret, HttpResponseBadRequest):
+        return ret
+    request.session['cloud_ip'] = ret
     return HttpResponseRedirect(request.META['HTTP_REFERER'])
 
 # TOD0: this view function needs refactoring once the new access control UI works

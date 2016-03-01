@@ -1305,7 +1305,7 @@ class BaseResource(Page, AbstractResource):
     def get_collaboration_json(self):
         res_bag_file_path = '/{zone}/home/{uname}/bags/{res_id}.zip'.format(zone=settings.IRODS_ZONE, uname=settings.IRODS_USERNAME, res_id=self.short_id)
         attr_data = {'resource': {"icat-server": "users.hydroshare.org",
-                                  "location": "uh",
+                                  "location": "sl",
                                   "file-path": res_bag_file_path}}
         data = {}
         data['action'] = 'save'
@@ -1331,7 +1331,7 @@ class BaseResource(Page, AbstractResource):
                 "collaborators": ["hyi"],
                 "name": "hydroshare",
                 "owner": {"name": "hyi"},
-                "lifetime": 120,
+                "lifetime": 1,
                 "dataflows": [
                     {
                         "source": {"id": "resource"},

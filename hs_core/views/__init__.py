@@ -266,7 +266,7 @@ def create_cloud_env_for_resource(request, shortkey, *args, **kwargs):
     ret = hydroshare.create_cloud_env_for_resource(shortkey)
     if isinstance(ret, HttpResponseBadRequest):
         return ret
-    request.session['cloud_ip'] = ret
+    request.session['cloud_ip_message'] = ret
     return HttpResponseRedirect(request.META['HTTP_REFERER'])
 
 # TOD0: this view function needs refactoring once the new access control UI works

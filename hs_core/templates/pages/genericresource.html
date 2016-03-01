@@ -23,6 +23,13 @@
             {%  endif %}
         {% endblock %}
 
+        {% if cloud_ip_message %}
+            <div class="alert alert-success alert-dismissible" role="alert">
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <strong>{{ cloud_ip_message }}</strong>
+            </div>
+        {% endif %}
+
         {# ======= Title ======= #}
         {% include "resource-landing-page/title-section.html" %}
 
@@ -377,9 +384,9 @@
                                 <span title='Create cloud environment using RADII' class="button-label">Create cloud environment using RADII</span>
                                 <a target="_blank" href="http://renci.org/radii/">Learn more about the RADII Collaboration-to-infrastructure project</a>
                             </a>
-                            {% if cloud_ip %}
+                            {% if cloud_ip_message %}
                             <div>
-                                <p>Congratulations! A VM {{ cloud_ip }} has been dynamically provisioned by RADII. </p>
+                                <p><strong>{{ cloud_ip_message }}</strong></p>
                             </div>
                             {% endif %}
                         </div>

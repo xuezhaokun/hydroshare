@@ -936,16 +936,26 @@ def create_cloud_env_for_resource(pk):
     if not response.status_code == status.HTTP_200_OK:
         return HttpResponseBadRequest(content=response.text)
 
-    for step in range(10):
+    for step in range(12):
         response = requests.get(url, auth=('hyi', 'hyi'))
         rjson = response.json()
         if not response.status_code == status.HTTP_200_OK:
             return HttpResponseBadRequest(content=response.text)
         elif rjson['state'] == 'active':
-            return rjson['entities'][1]['node-groups'][0]['nodes'][0]['public-ip']
+            # query resource node
+            res_entity = None
+            for entity in rjson['entities']:
+                if entity['id'] == 'resource':
+                    res_entity = entity
+            if res_entity == None:
+                return "resource entity does not exist in the JSON response."
+            ip = res_entity['node-groups'][0]['nodes'][0]['public-ip']
+            ret_msg = 'Congratulations! A VM {ip} has been dynamically provisioned by RADII.'.format(ip=ip)
+            return ret_msg
+
         time.sleep(10)
 
-    return None
+    return "The cloud environment provision request timed out - it cannot be provisioned within 2 minutes"
 
 
 def create_metadata_element(resource_short_id, element_model_name, **kwargs):

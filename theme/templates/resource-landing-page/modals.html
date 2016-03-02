@@ -408,15 +408,17 @@
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title" id="create-cloud-env-title">Create Cloud Environment for This Resource</h4>
+                <h4 class="modal-title" id="create-cloud-env-title">Create Virtual Infrastructure for This Resource</h4>
             </div>
             <div class="modal-body">
-                Dynamically creating a cloud environment for this resource using RADII data-centric collaboration-to-infrastructure mapping technology.
+                Dynamically creating a virtual infrastructure including automatically installed and configured compute
+                resources on a virutal machine for this resource using RADII data-centric collaboration-to-infrastructure
+                mapping technology.
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
                 <a type="button" class="btn btn-primary"
-                   href="/hsapi/_internal/{{ cm.short_id }}/create-cloud-env-for-resource/">Create Cloud Environment</a>
+                   href="/hsapi/_internal/{{ cm.short_id }}/create-cloud-env-for-resource/">Create Virtual Infrastrcture</a>
             </div>
         </div>
     </div>

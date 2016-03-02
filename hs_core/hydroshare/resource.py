@@ -936,7 +936,7 @@ def create_cloud_env_for_resource(pk):
     if not response.status_code == status.HTTP_200_OK:
         return HttpResponseBadRequest(content=response.text)
 
-    for step in range(12):
+    for step in range(30):
         response = requests.get(url, auth=('hyi', 'hyi'))
         rjson = response.json()
         if not response.status_code == status.HTTP_200_OK:
@@ -955,7 +955,7 @@ def create_cloud_env_for_resource(pk):
 
         time.sleep(10)
 
-    return "The cloud environment provision request timed out - it cannot be provisioned within 2 minutes"
+    return "The RADII collaboration VM provision request timed out - it cannot be provisioned within 5 minutes"
 
 
 def create_metadata_element(resource_short_id, element_model_name, **kwargs):

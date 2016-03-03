@@ -406,20 +406,26 @@
 <div class="modal fade" id="create-cloud-env-dialog" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                <h4 class="modal-title" id="create-cloud-env-title">Create Virtual Infrastructure for This Resource</h4>
-            </div>
-            <div class="modal-body">
-                Dynamically creating a virtual infrastructure including automatically installed and configured compute
-                resources on a virutal machine for this resource using RADII data-centric collaboration-to-infrastructure
-                mapping technology.
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-                <a type="button" class="btn btn-primary"
-                   href="/hsapi/_internal/{{ cm.short_id }}/create-cloud-env-for-resource/">Create Virtual Infrastrcture</a>
-            </div>
+            <form role="form" action="/hsapi/_internal/{{ cm.short_id }}/create-cloud-env-for-resource/" method="POST">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                    <h4 class="modal-title" id="create-cloud-env-title">Create Virtual Infrastructure for This Resource</h4>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        Dynamically creating a virtual infrastructure including automatically installed and configured compute
+                        resources on a virutal machine (VM) for this resource using RADII data-centric collaboration-to-infrastructure
+                        mapping technology.
+                    </p>
+                    <label for="id_vm-lifetime" class="control-label">Input VM life time in hours: </label>
+                    <input type="text" class="form-control" id="lifetime" name="lifetime" value="1">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Virtual Infrastrcture</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

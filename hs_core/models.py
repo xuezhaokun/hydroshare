@@ -1302,7 +1302,7 @@ class BaseResource(Page, AbstractResource):
         return AbstractResource.can_view(self, request)
 
     # create collaboration JSON object for using RADII to provision a cloud environment for the resource
-    def get_collaboration_json(self):
+    def get_collaboration_json(self, lifetime=1):
         res_bag_file_path = '/{zone}/home/{uname}/bags/{res_id}.zip'.format(zone=settings.IRODS_ZONE, uname=settings.IRODS_USERNAME, res_id=self.short_id)
         attr_data = {'resource': {"icat-server": "users.hydroshare.org",
                                   "location": "sl",
@@ -1331,7 +1331,7 @@ class BaseResource(Page, AbstractResource):
                 "collaborators": ["hyi"],
                 "name": "hydroshare",
                 "owner": {"name": "hyi"},
-                "lifetime": 1,
+                "lifetime": lifetime,
                 "dataflows": [
                     {
                         "source": {"id": "resource"},

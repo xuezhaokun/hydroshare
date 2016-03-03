@@ -263,7 +263,8 @@ def publish(request, shortkey, *args, **kwargs):
 
 def create_cloud_env_for_resource(request, shortkey, *args, **kwargs):
     res, _, _ = authorize(request, shortkey, edit=True, full=True, superuser=True)
-    ret = hydroshare.create_cloud_env_for_resource(shortkey)
+    vm_lifetime = int(request.POST['lifetime'])
+    ret = hydroshare.create_cloud_env_for_resource(shortkey, lifetime=vm_lifetime)
     if isinstance(ret, HttpResponseBadRequest):
         return ret
     request.session['cloud_ip_message'] = ret

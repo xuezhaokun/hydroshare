@@ -914,9 +914,9 @@ def resolve_doi(doi):
     return utils.get_resource_by_doi(doi).short_id
 
 
-def create_cloud_env_for_resource(pk):
+def create_cloud_env_for_resource(pk, lifetime=1):
     res = utils.get_resource_by_shortkey(pk)
-    collab_json = res.get_collaboration_json()
+    collab_json = res.get_collaboration_json(lifetime=lifetime)
     url = "http://152.54.9.88:8080/collaboration/{collab_id}".format(collab_id=pk)
     # exceptions will be raised if PUT request fails
     response = requests.put(url, headers={'content-type': 'application/json'},
@@ -950,7 +950,10 @@ def create_cloud_env_for_resource(pk):
             if res_entity == None:
                 return "resource entity does not exist in the JSON response."
             ip = res_entity['node-groups'][0]['nodes'][0]['public-ip']
-            ret_msg = 'Congratulations! A VM {ip} has been dynamically provisioned by RADII.'.format(ip=ip)
+            ret_msg = 'Congratulations! A Virtual Machine (VM) {ip} has been dynamically provisioned by RADII with your ' \
+                      'selected HydroShare resource bag transferred to your home directory. You can ssh to this VM ' \
+                      'and do work there (e.g., ssh your_hydroshare_username@{ip}). This VM is also an iRODS resource server that is part ' \
+                      'of the HydroShare hydroshareuserZone User File Space on users.hydroshare.org.'.format(ip=ip)
             return ret_msg
 
         time.sleep(10)

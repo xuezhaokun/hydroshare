@@ -50,22 +50,31 @@ def landing_page(request, page):
 
 
         ext_md_layout = Layout(
-                           HTML("<div class='form-group' id='workflowinput'> "
+                           HTML("<div class='row'><div class='col-xs-12 col-sm-6'><div class='form-group' id='workflowinput'> "
                                 '{% load crispy_forms_tags %} '
                                 '{% crispy workflow_input_form %} '
                                 '</div>'),
-                           HTML('<div class="form-group" id="workflowoutput"> '
+
+                           HTML('<div class="form-group" id="workflowprocessors"> '
+                                '{% load crispy_forms_tags %} '
+                                '{% crispy workflow_processors_form %} '
+                                '</div></div> '),
+
+                           HTML('<div class="col-xs-12 col-sm-6"><div class="form-group" id="workflowoutput"> '
                                 '{% load crispy_forms_tags %} '
                                 '{% crispy workflow_output_form %} '
                                 '</div> '),
+
                            HTML('<div class="form-group" id="irodsworkflowprocessors"> '
                                 '{% load crispy_forms_tags %} '
                                 '{% crispy irods_workflow_processors_form %} '
                                 '</div> '),
-                           HTML('<div class="form-group" id="workflowprocessors"> '
-                                '{% load crispy_forms_tags %} '
-                                '{% crispy workflow_processors_form %} '
-                                '</div> ')
+
+                           HTML('<div style="margin-top:65px"><div style="margin-left:210px">'
+                                 '<p><a id="execute_wso" class="btn btn-success" data-toggle="modal" data-target="#execute_wso-dialog">'
+                                 'Execute WSO</a>'
+                                 '</div></div></div>'),
+
         )
 
 

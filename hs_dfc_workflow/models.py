@@ -1,7 +1,7 @@
 __author__ = 'Mohamed Morsy'
 from lxml import etree
 
-from django.contrib.contenttypes import generic
+from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
 from mezzanine.pages.page_processors import processor_for
@@ -10,6 +10,7 @@ import os
 
 from hs_core.models import BaseResource, ResourceManager, resource_processor, CoreMetaData, AbstractMetaDataElement
 from hs_core.hydroshare import utils
+
 
 # extended metadata elements for DFC Workflow resource type
 class WorkflowInput(AbstractMetaDataElement):
@@ -20,6 +21,7 @@ class WorkflowInput(AbstractMetaDataElement):
     def __unicode__(self):
         return self.inputType
 
+
 class WorkflowOutput(AbstractMetaDataElement):
     term = 'WorkflowOutput'
     outputType = models.CharField(max_length=200, null=True, blank=True, verbose_name='Output files type')
@@ -27,6 +29,7 @@ class WorkflowOutput(AbstractMetaDataElement):
 
     def __unicode__(self):
         return self.outputType
+
 
 class WorkflowProcessors(AbstractMetaDataElement):
     term = 'WorkflowProcessors'
@@ -55,6 +58,7 @@ class WorkflowProcessors(AbstractMetaDataElement):
         else:
             return "No"
 
+
 class IrodsWorkflowProcessors(AbstractMetaDataElement):
     term = 'IrodsWorkflowProcessors'
     irodsProcessorsNumber = models.PositiveIntegerField(max_length=200, null=True, blank=True, verbose_name='iRODS Processors number', default=1)
@@ -73,6 +77,7 @@ class IrodsWorkflowProcessors(AbstractMetaDataElement):
         else:
             return "No"
 
+
 # DFC Workflow Resource type
 class DFCWorkflowResource(BaseResource):
     objects = ResourceManager("DFCWorkflowResource")
@@ -85,11 +90,6 @@ class DFCWorkflowResource(BaseResource):
     def metadata(self):
         md = DFCWorkflowMetaData()
         return self._get_metadata(md)
-
-    @classmethod
-    def get_supported_upload_file_types(cls):
-        # all file types are supported
-        return ('.*')
 
     def has_required_content_files(self):
         mss_file_exists = False
@@ -111,12 +111,13 @@ class DFCWorkflowResource(BaseResource):
 
 processor_for(DFCWorkflowResource)(resource_processor)
 
+
 # metadata container class
 class DFCWorkflowMetaData(CoreMetaData):
-    _workflow_input = generic.GenericRelation(WorkflowInput)
-    _workflow_output = generic.GenericRelation(WorkflowOutput)
-    _workflow_processors = generic.GenericRelation(WorkflowProcessors)
-    _irods_workflow_processors = generic.GenericRelation(IrodsWorkflowProcessors)
+    _workflow_input = GenericRelation(WorkflowInput)
+    _workflow_output = GenericRelation(WorkflowOutput)
+    _workflow_processors = GenericRelation(WorkflowProcessors)
+    _irods_workflow_processors = GenericRelation(IrodsWorkflowProcessors)
 
     @property
     def workflow_input(self):

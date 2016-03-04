@@ -298,8 +298,9 @@ INSTALLED_APPS = (
     "hs_tools_resource",
     "hs_swat_modelinstance",
     "hs_geographic_feature_resource",
+    "hs_script_resource",
+    "hs_sitemap",
     "hs_dfc_workflow",
-    "hs_script_resource"
 )
 
 # These apps are excluded by hs_core.tests.runner.CustomTestSuiteRunner
@@ -471,6 +472,9 @@ HAYSTACK_CONNECTIONS = {
 
 # customized value for password reset token and email verification link token to expire in 1 day
 PASSWORD_RESET_TIMEOUT_DAYS = 1
+
+#
+RESOURCE_LOCK_TIMEOUT_SECONDS = 300 # in seconds
 
 ####################
 # OAUTH TOKEN SETTINGS #

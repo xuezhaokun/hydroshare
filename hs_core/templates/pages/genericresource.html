@@ -856,6 +856,71 @@
     {% block extra_js %}
         <script type="text/javascript" src="{{ STATIC_URL }}js/irods.js"></script>
         <script type="text/javascript">
+
+            function contentHttpCheckbox(e){
+                var isChecked = $("#http_form_name_chkbox")[0].checked;
+
+                if (isChecked){
+                    $("#http_form_name")[0].disabled = true;
+                }
+                else{
+                    $("#http_form_name")[0].disabled = false;
+                }
+            }
+
+            function httpAddressValidate(e){
+
+                if(!$("#http_form_name_chkbox")[0].checked){
+                    return;
+                }
+
+                var url = $("#http_form_url")[0].value;
+                var url_parts = url.split('://');
+
+                $("#http_form_name")[0].style.border="1px solid red";
+                if(url_parts.length != 2){
+                    $("#http_form_info")[0].innerHTML = 'invalid file url: Must be a valid web address';
+                }
+                else if(url_parts[0] != "http" && url_parts[0] != "https") {
+                    $("#http_form_info")[0].innerHTML = 'invalid file url: Must use http or https protocol';
+                }
+                else{
+                    var fname = url_parts[1].split('/').pop();
+
+                    if(fname == ""){
+                        $("#http_form_info")[0].innerHTML = 'invalid file url: Cannot have an empty name';
+                    }
+                    else {
+                        $("#http_form_name")[0].style.border = "1px solid green";
+                        $("#http_form_name")[0].value = fname;
+                        $("#http_form_info")[0].innerHTML = '';
+                    }
+                }
+            }
+
+            function contentRadioSelect(e){
+
+                var selected_radio = e.value;
+                var git_form_elements = $("#div-add-content-git")[0];
+                var ftp_form_elements = $("#div-add-content-url")[0];
+
+
+                if (selected_radio == 'ftp_radio'){
+                    // activate ftp form elements
+                    ftp_form_elements.style.display = 'block';
+
+                    // deactivate git form elements
+                    git_form_elements.style.display = 'none';
+                }
+                else{
+                    // deactivate ftp form elements
+                    ftp_form_elements.style.display = 'none';
+
+                    // activate git form elements
+                    git_form_elements.style.display = 'block';
+                }
+            }
+
             function onRoleSelect(event) {
                 var el = $(event.target);
                 $("#selected_role").text(el.text());
@@ -1366,6 +1431,19 @@
                         $(this).closest("form").find("button").show();
                     });
                 });
+
+                // add event handler for modal content window
+                var http_address_input = $('#http_form_url')[0];
+                if (http_address_input != null){
+                    http_address_input.oninput = httpAddressValidate;
+                    http_address_input.onpaste = httpAddressValidate;
+                    http_address_input.onpropertychange = http_address_input.oninput;
+                    $("#http_form_name_chkbox")[0].onchange = contentHttpCheckbox;
+                    $("#http_form_name")[0].disabled = true;
+                }
+
+
+
             });
         </script>
         <script type="text/javascript" src="{{ STATIC_URL }}js/resourceLandingAjax.js"></script>

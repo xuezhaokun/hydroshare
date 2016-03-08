@@ -38,6 +38,23 @@ from hs_core.hydroshare import utils
 from . import utils as view_utils
 from hs_core.signals import *
 
+import os
+import requests
+import ftplib
+import tempfile
+from django.core.files.uploadedfile import UploadedFile
+
+class TemporaryUploadedFile(UploadedFile):
+    def __init__(self, file=None, name=None, content_type=None, size=None, charset=None, content_type_extra=None):
+        super(UploadedFile, self).__init__(file, name)
+        self.orig_name = name
+        self.size = size
+        self.content_type = content_type
+        self.charset = charset
+        self.content_type_extra = content_type_extra
+
+    def temporary_file_path(self):
+        return self.orig_name
 
 def short_url(request, *args, **kwargs):
     try:
@@ -67,9 +84,130 @@ def verify(request, *args, **kwargs):
 
     return HttpResponseRedirect('/')
 
+def import_from_ftp(url):
+    try:
+
+        # remove ftp:// from beginning of url if it exists
+        url = url.replace('ftp://','')
+
+        # split the url into the base address and the file location
+        url_components = url.split('/')
+        base_url = url_components[0]
+        file_url = '/'.join(url_components[1:])
+
+        # connect to ftp server
+        ftp = ftplib.FTP(base_url)
+        ftp.login() # todo: ignoring login credentials for now
+
+        # make a temporary file
+        fd, fn = tempfile.mkstemp()
+        tempf = open(fn, 'wb')
+
+        ftp.retrbinary('RETR %s' % file_url,  callback=tempf.write, blocksize=8192)
+
+    except Exception, e:
+        tempf = None
+
+    return tempf
+
+def import_from_url(url):
+
+    try:
+
+        # split the url to remove the schema
+        protocol, url = url.split('://')
+
+        # add http protocol back into url to ensure that it is always "http"
+        full_url = 'http://'+url
+
+        f = requests.get(full_url, stream=True)
+
+        # Create a temporary file
+        lf = tempfile.NamedTemporaryFile()
+
+
+        # Read the streamed image in sections
+        for block in f.iter_content(1024 * 8):
+            # If no more file then stop
+            if not block:
+                break
+            lf.write(block)
+
+    except Exception, e:
+        print e
+        lf = None
+
+    return lf
+
+    """
+    >>> import requests
+    >>>
+    >>> url = "http://download.thinkbroadband.com/10MB.zip"
+    >>> r = requests.get(url)
+    >>> print len(r.content)
+    """
+
+def import_from_git(url, sha):
+
+    try:
+        # remove the .git extension from the url
+        if url[-4:] == '.git':
+            url = url[:-4]
+
+        if sha.strip() == '':
+            sha = 'master'
+
+        url_format = '{repo}/archive/{sha}.zip'
+
+        full_url = url_format.format(repo=url, sha=sha)
+        f = requests.get(full_url, stream=True)
+
+        # Create a temporary file
+        lf = tempfile.NamedTemporaryFile()
+
+
+        # Read the streamed image in sections
+        for block in f.iter_content(1024 * 8):
+            # If no more file then stop
+            if not block:
+                break
+            lf.write(block)
+
+    except Exception, e:
+        lf = None
+
+    return lf
 
 def add_file_to_resource(request, shortkey, *args, **kwargs):
     resource, _, _ = authorize(request, shortkey, edit=True, full=True, superuser=True)
+
+    # call git/ftp functions and add files to request._files
+    gitaddress = request.POST['gitaddress']
+    gitsha = request.POST['gitsha']
+    httpurl = request.POST['fileaddress']
+    httpname = request.POST['filename'].strip()
+
+    # import the file from GIT
+    if gitaddress.strip() != '':
+        lf = import_from_git(gitaddress, gitsha)
+        if lf is not None:
+            local_filename = '.'.join(gitaddress.split('/')[4:])
+            tfile = TemporaryUploadedFile(lf.file, name=local_filename,
+                                        content_type='application/zip',
+                                        size=os.stat(lf.name).st_size)
+            # gitfile = open(gitfilepath, 'w+b')
+            request.FILES.appendlist('files',tfile)
+
+    # import the file from URL
+    if httpurl.strip() != '':
+        lf = import_from_url(httpurl)
+        local_filename = httpname if httpname != '' else httpurl.split('/')[-1]
+        tfile = TemporaryUploadedFile(lf, name=local_filename,
+                                    content_type='application/zip',
+                                    size=os.stat(lf.name).st_size)
+        request.FILES.appendlist('files',tfile)
+
+
     res_files = request.FILES.getlist('files')
     extract_metadata = request.REQUEST.get('extract-metadata', 'No')
     extract_metadata = True if extract_metadata.lower() == 'yes' else False
@@ -470,10 +608,12 @@ class FilterForm(forms.Form):
 @processor_for('my-resources')
 @login_required
 def my_resources(request, page):
-    import sys
-    sys.path.append("/home/docker/pycharm-debug")
-    import pydevd
-    pydevd.settrace('129.123.51.152', port=21000, suspend=False)
+    # import sys
+    # sys.path.append("/home/docker/pycharm-debug")
+    # import pydevd
+    # # pydevd.settrace('129.123.51.152', port=21000, suspend=False)
+    # pydevd.settrace('192.168.0.8', port=21000, suspend=False)
+
 
     user = request.user
     # get a list of resources with effective OWNER privilege

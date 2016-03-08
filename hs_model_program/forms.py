@@ -32,39 +32,13 @@ class mp_form_helper(BaseFormHelper):
                                 '</select>'
                             '</div><br>')
 
-        git_form_elements = HTML(
-            """
-            <div id="div_id_git">
-            Address: <input type="text" id='git_form_url' name="gitaddress"> <br>
-            SHA: <input type="text" id='git_form_sha' name="gitsha">
-                <button type="button" class="btn btn-default" id='git_form_import' onclick="importFromGit(this);">Import</button>
-            </div>
-            <br>
-            """
-        )
-
-        radio_button_group = HTML(
-                """
-                <div>
-                    <form id="form_data_radio" action="">
-                      <input type="radio" name="data_radio_group" value="content_radio" checked="checked" onclick="radioSelect(this);"> Select From Uploaded Content
-                      <input type="radio"  name="data_radio_group" value="git_radio" onclick="radioSelect(this);"> Import from Git Repository <br>
-                    </form>
-                </div>
-                <br>
-                """
-        )
-
 
         # Order of the Fields below determines their layout on the edit page
         # For consistency, make sure this ordering matches models.py->get_xml()
         field_width = 'form-control input-sm'
         css_multichar = field_width + ' multichar'
         layout = Layout(
-#            HTML('input type="radio" '),
-            HTML('<legend>Data files</legend>'),
-            radio_button_group,
-            git_form_elements,
+            HTML('<legend>Data</legend>'),
             HTML('<div class="col-sm-6 col-xs-12">'),
             # data fields
             Field('modelEngine', css_class=css_multichar, style="display:none"),

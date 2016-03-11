@@ -126,6 +126,13 @@ IRODS_BAGIT_RULE='hydroshare/irods/ruleGenerateBagIt_HS.r'
 IRODS_BAGIT_PATH = 'bags'
 IRODS_BAGIT_POSTFIX = 'zip'
 
+# iRODS configuration for DFC Workflow Execution
+IRODS_DFC_WORKFLOW_HOST = ''
+IRODS_DFC_WORKFLOW_PORT = ''
+IRODS_DFC_WORKFLOW_ZONE = ''
+IRODS_DFC_WORKFLOW_USERNAME = ''
+IRODS_DFC_WORKFLOW_AUTH = ''
+
 # crossref login credential for resource publication
 USE_CROSSREF_TEST = True
 CROSSREF_LOGIN_ID = ''

@@ -97,3 +97,13 @@
         {% endif %}
     {% endif %}
 {% endblock %}
+
+{% block extra_section %}
+    <div class="row">
+        {% if page.perms.change and metadata_form %}
+            <div class="col-sm-4">
+                <a id="execute_wso" class="btn btn-success" href="/_internal/{{ cm.short_id }}/execute_wso/">Execute WSO</a>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

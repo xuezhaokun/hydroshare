@@ -18,7 +18,7 @@ def landing_page(request, page):
     if not edit_resource:
         # get the context from hs_core
         context = page_processors.get_page_context(page, request.user, resource_edit=edit_resource,
-                                                   extended_metadata_layout=None)
+                                                   extended_metadata_layout=None, request=request)
         extended_metadata_exists = False
         if content_model.metadata.workflow_input or \
                 content_model.metadata.workflow_output or \
@@ -69,12 +69,6 @@ def landing_page(request, page):
                                 '{% load crispy_forms_tags %} '
                                 '{% crispy irods_workflow_processors_form %} '
                                 '</div> '),
-
-                           HTML('<div style="margin-top:65px"><div style="margin-left:210px">'
-                                 '<p><a id="execute_wso" class="btn btn-success" data-toggle="modal" data-target="#execute_wso-dialog">'
-                                 'Execute WSO</a>'
-                                 '</div></div></div>'),
-
         )
 
 

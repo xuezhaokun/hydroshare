@@ -1,5 +1,5 @@
 import os
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponseRedirect
 
 from django_irods.icommands import SessionException
 from django_irods.storage import IrodsStorage
@@ -38,8 +38,8 @@ def execute_wso(request, shortkey, *args, **kwargs):
         to_file_path = '{path}/{fname}'.format(path=os.path.splitext(to_file_name)[0], fname=to_file_name)
         irods_storage.saveFile(mss_file, to_file_name, True) # need to set parameters
 
-    #except SessionException as ex:
-    #    request.session['validation_error'] = ex.stderr
-    #    return HttpResponseRedirect(request.META['HTTP_REFERER'])
+    except SessionException as ex:
+        request.session['validation_error'] = ex.stderr
+        return HttpResponseRedirect(request.META['HTTP_REFERER'])
 
     return HttpResponseRedirect(request.META['HTTP_REFERER'])

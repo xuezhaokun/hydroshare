@@ -33,7 +33,7 @@ class WorkflowOutput(AbstractMetaDataElement):
 
 class WorkflowProcessors(AbstractMetaDataElement):
     term = 'WorkflowProcessors'
-    processorsNumber = models.PositiveIntegerField(max_length=200, null=True, blank=True, verbose_name='Processors number', default=1)
+    processorsNumber = models.PositiveIntegerField(null=True, blank=True, verbose_name='Processors number', default=1)
     processorsType = models.CharField(max_length=200, null=True, blank=True, verbose_name='Processors type')
     processorsDescription = models.TextField(verbose_name='Processors description')
     has_CodeRepository = models.BooleanField(default=False, verbose_name='Has code repository?')
@@ -61,7 +61,7 @@ class WorkflowProcessors(AbstractMetaDataElement):
 
 class IrodsWorkflowProcessors(AbstractMetaDataElement):
     term = 'IrodsWorkflowProcessors'
-    irodsProcessorsNumber = models.PositiveIntegerField(max_length=200, null=True, blank=True, verbose_name='iRODS Processors number', default=1)
+    irodsProcessorsNumber = models.PositiveIntegerField(null=True, blank=True, verbose_name='iRODS Processors number', default=1)
     irodsProcessorsType = models.CharField(max_length=200, null=True, blank=True, verbose_name='iRODS Processors type')
     irodsProcessorsDescription = models.TextField(verbose_name='iRODS Processors description')
     has_CodeRepository = models.BooleanField(default=False, verbose_name='Has code repository?')

@@ -38,9 +38,10 @@ def execute_wso(request, shortkey, *args, **kwargs):
         irods_storage = IrodsStorage()
         # download resource mss file and mpf files to prepare for subsequent ingesting
         mss_tmp_file = irods_storage.download(mss_file_name)
-        mpf_tmp_files = []
+        mpf_tmp_files_dict = {}
         for fname in mpf_file_names:
-            mpf_tmp_files.append(irods_storage.download(fname))
+            base_fname = os.path.basename(fname).strip()
+            mpf_tmp_files_dict[base_fname] = irods_storage.download(fname)
 
         # ingest files into workflow iRODS server to trigger workflow execution
         irods_storage.set_user_session(username=user, password=password, host=host, port=port, def_res=def_res, zone=zone)
@@ -53,15 +54,15 @@ def execute_wso(request, shortkey, *args, **kwargs):
         wso_coll_name = "{cwd}/{coll_name}/wso".format(cwd=homedir, coll_name=to_coll_name)
         irods_storage.session.run("imkdir", None, '-p', wso_coll_name)
         irods_storage.session.run("imcoll", None, '-m', 'msso', to_file_path, wso_coll_name)
-        for f in mpf_tmp_files:
-            wso_mpf_path = "{coll_name}/{mpf_name}".format(coll_name=wso_coll_name, mpf_name=f.name)
-            irods_storage.saveFile(f.name, wso_mpf_path, False)
+        for fname, fobj in mpf_tmp_files_dict.iteritems():
+            wso_mpf_path = "{coll_name}/{mpf_name}".format(coll_name=wso_coll_name, mpf_name=fname)
+            irods_storage.saveFile(fobj.name, wso_mpf_path, False)
             # trigger WSO execution via a iget of the generated run file
             run_file_name = "{coll_name}/{base_name}.run".format(coll_name=wso_coll_name,
-                                                                 base_name=os.path.splitext(f.name)[0])
+                                                                 base_name=os.path.splitext(fname)[0])
             tmpFile = irods_storage.download(run_file_name)
-            fname = os.path.basename(run_file_name.rstrip(os.sep))
-            add_file_to_resource(res, UploadedFile(file=tmpFile, name=fname))
+            run_fname = os.path.basename(run_file_name.rstrip(os.sep))
+            add_file_to_resource(res, UploadedFile(file=tmpFile, name=run_fname))
     except SessionException as ex:
         request.session['validation_error'] = ex.stderr
         return HttpResponseRedirect(request.META['HTTP_REFERER'])

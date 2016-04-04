@@ -18,6 +18,12 @@ class HorizontalRadioRenderer(forms.RadioSelect.renderer):
         return mark_safe(u'\n'.join([u'%s\n' % w for w in self]))
 
 
+class AuthorMetaDataValidationForm(forms.Form):
+    name = forms.CharField(required=True)
+    email = forms.EmailField(required=True)
+    phone = forms.CharField()
+
+
 class Helper(object):
 
     @classmethod

@@ -20,7 +20,7 @@ from django.core.files.uploadedfile import UploadedFile
 from mezzanine.conf import settings
 
 from hs_core.signals import *
-from hs_core.models import AbstractResource, ResourceManager, BaseResource, ResourceFile
+from hs_core.models import AbstractResource, ResourceManager, BaseResource, ResourceFile, GenericMetaDataElement
 from hs_core.hydroshare.hs_bagit import create_bag_files
 from django_irods.storage import IrodsStorage
 
@@ -44,6 +44,32 @@ def get_resource_types():
                 resource_types.append(model)
     return resource_types
 
+
+def get_metadata_element_types():
+    metadata_element_types = []
+    for model in apps.get_models():
+        if issubclass(model, GenericMetaDataElement) and model != GenericMetaDataElement:
+            if not getattr(model, 'archived_model', False):
+                metadata_element_types.append(model)
+    return metadata_element_types
+
+
+def check_metadata_element_type(metadata_element_type):
+    """
+    internally used method to check the resource type
+
+    Parameters:
+    metadata_element_type: the metadata element type string to check
+    Returns:  the metadata element type class matching the element type string; if no match is found, raises exception
+    """
+    for tp in get_metadata_element_types():
+        if metadata_element_type == tp.__name__:
+            element_cls = tp
+            break
+    else:
+        raise NotImplementedError("Metadata element type {element_type} does not "
+                                  "exist".format(element_type=metadata_element_type))
+    return element_cls
 
 def get_resource_instance(app, model_name, pk, or_404=True):
     model = apps.get_model(app, model_name)

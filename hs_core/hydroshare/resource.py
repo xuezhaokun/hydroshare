@@ -17,7 +17,7 @@ from rest_framework import status
 from mezzanine.generic.models import Keyword, AssignedKeyword
 
 from hs_core.hydroshare import hs_bagit
-from hs_core.models import ResourceFile
+from hs_core.models import ResourceFile, MetaData
 from hs_core import signals
 from hs_core.hydroshare import utils
 from hs_access_control.models import ResourceAccess, UserResourcePrivilege, PrivilegeCodes
@@ -403,7 +403,8 @@ def create_resource(
     with transaction.atomic():
         cls = check_resource_type(resource_type)
         owner = utils.user_from_id(owner)
-
+        metadata_new = MetaData()
+        metadata_new.save()
         # create the resource
         resource = cls.objects.create(
             resource_type=resource_type,
@@ -412,9 +413,11 @@ def create_resource(
             title=title,
             last_changed_by=owner,
             in_menus=[],
+            metadata_new=metadata_new,
             **kwargs
         )
 
+        #resource.metadata_new = MetaData()
         resource.resource_type = resource_type
 
         # by default make resource private

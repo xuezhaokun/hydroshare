@@ -235,6 +235,8 @@ loaddb_hs() {
     docker exec $CID createdb -U postgres -h postgis postgres --encoding UNICODE --template=template0
     echo "*** create POSTGIS extension ***"
     docker exec $CID psql -U postgres -h postgis -w -c 'create extension postgis;'
+    echo "*** create hstore extension ***"
+    docker exec $CID psql -U postgres -h postgis -d template1 -w -c 'create extension hstore;'
     echo "*** load database with contents of ${HS_DATABASE} ***"
     docker exec $CID psql -U postgres -h postgis -f ${HS_DATABASE}
     echo "*** manage.py collectstatic ***"

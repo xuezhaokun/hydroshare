@@ -6,6 +6,7 @@ from languages_iso import languages as iso_languages
 from dateutil import parser
 from lxml import etree
 
+from django.contrib.postgres.fields import HStoreField
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.auth.models import User, Group
@@ -29,6 +30,7 @@ from mezzanine.core.models import Ownable
 from mezzanine.generic.fields import CommentsField, RatingField
 from mezzanine.generic.fields import KeywordsField
 from mezzanine.conf import settings as s
+from mezzanine.pages.managers import PageManager
 
 
 class GroupOwnership(models.Model):
@@ -192,6 +194,78 @@ class AbstractMetaDataElement(models.Model):
     class Meta:
         abstract = True
 
+
+class MetaDataElementManager(models.Manager):
+    def __init__(self, element_type=None):
+        self.element_type = element_type
+        super(MetaDataElementManager, self).__init__()
+
+    def get_queryset(self):
+        qs = super(MetaDataElementManager, self).get_queryset()
+        if self.element_type:
+           qs = qs.filter(element_type=self.element_type)
+        return qs
+
+
+# This we can use arbitrary key/value data - no validation is needed
+class GenericMetaDataElement(models.Model):
+    element_type = models.CharField(max_length=100, default="Generic")
+    data = HStoreField()
+    metadata = models.ForeignKey('MetaData',
+                                 on_delete=models.CASCADE,
+                                 related_name="elements"
+                                 )
+
+    class Meta:
+        verbose_name = 'Generic Metadata Element'
+        db_table = 'hs_core_generic_metadata_element'
+
+    @classmethod
+    def create(cls, **kwargs):
+        return cls.objects.create(**kwargs)
+
+    @classmethod
+    def update(cls, element_id, **kwargs):
+        return cls.objects.update(data=kwargs)
+
+    @classmethod
+    def remove(cls, element_id):
+        element = cls.objects.get(id=element_id)
+        element.delete()
+
+
+class Generic(GenericMetaDataElement):
+    """
+    Use this metadata element to store arbitrary key/value data
+    """
+    objects = MetaDataElementManager('Generic')
+
+    class Meta:
+        verbose_name = 'Generic'
+        proxy = True
+
+
+class Author(GenericMetaDataElement):
+    objects = MetaDataElementManager('Author')
+
+    class Meta:
+        verbose_name = 'Author'
+        proxy = True
+
+    @classmethod
+    def create(cls, **kwargs):
+        # TODO: This validation will be done in the receiver later how
+        # we do for the old metadata implementation
+        from forms import AuthorMetaDataValidationForm
+        form = AuthorMetaDataValidationForm(kwargs['data'])
+        if form.is_valid():
+            return cls.objects.create(**kwargs)
+        raise ValidationError("Author data is not valid:" + str(form.errors))
+#
+#
+# class RelatedMetaDataElement(models.Model):
+#     related_data = models.ForeignKey(GenericMetaDataElement, related_name='elements', null=True, blank=True)
+
 # Adaptor class added for Django inplace editing to honor HydroShare user-resource permissions
 class HSAdaptorEditInline(object):
     @classmethod
@@ -212,6 +286,46 @@ class ExternalProfileLink(models.Model):
     class Meta:
         unique_together = ("type", "url", "object_id")
 
+
+# class PartyNew(GenericMetaDataElement):
+#     objects = MetaDataElementManager('Party')
+#     allowed_keys = ('name', 'email', 'organization', 'phone', 'order')
+#
+#     @classmethod
+#     def create(cls, element_type, **kwargs):
+#         element_name = cls.__name__
+#         for key in kwargs:
+#             if key not in cls.allowed_keys:
+#                 raise ValidationError("Invalid attribute name '{}' found for element {}.".format(key,
+#                                                                                                  element_name.lower()))
+#         # profile_links = None
+#         # if 'profile_links' in kwargs:
+#         #     profile_links = kwargs['profile_links']
+#         #     del kwargs['profile_links']
+#
+#         # name is a required key
+#         if 'name' in kwargs:
+#             if len(kwargs['name'].strip()) == 0:
+#                 raise ValidationError("Invalid name for the %s." % element_name.lower())
+#
+#         metadata_obj = kwargs['metadata']
+#         if element_name.lower() == 'creator':
+#             party = metadata_obj.creators.order_by('data__oder').last()
+#         else:
+#             party = metadata_obj.contributors.order_by('data__oder').last()
+#
+#         party_order = 1
+#         if party:
+#             party_order = party.order + 1
+#
+#         kwargs['order'] = party_order
+#         party = super(PartyNew, cls).create(element_type, **kwargs)
+#
+#         # if profile_links:
+#         #     for link in profile_links:
+#         #         cls._create_profile_link(party, link)
+#
+#         return party
 
 class Party(AbstractMetaDataElement):
     description = models.URLField(null=True, blank=True, validators=[validate_user_url])
@@ -377,6 +491,34 @@ class Contributor(Party):
     term = 'Contributor'
 
 
+# class CreatorNew(PartyNew):
+#     objects = MetaDataElementManager('Creator')
+#
+#     class Meta:
+#         verbose_name = 'Creator'
+#         proxy = True
+#
+#     @property
+#     def name(self):
+#         return self.data['name']
+#
+#     @property
+#     def email(self):
+#         return self.data.get('email', None)
+#
+#     @classmethod
+#     def create(cls,**kwargs):
+#         # here data is a dict that should have the keys for
+#         # the sub-elements (name, order, phone, etc) of creator
+#         # data = kwargs['data']
+#         # TODO: check that the data dict has the necessary data
+#         # otherwise raise validation error
+#         return super(CreatorNew,cls).create(element_type='Creator', **kwargs)
+#
+#
+#     # overide this method for custom validation of hstore data
+#     def clean(self):
+#         pass
 # Example of repeatable metadata element
 class Creator(Party):
     term = "Creator"
@@ -1020,7 +1162,7 @@ def short_id():
     return uuid4().hex
 
 
-from mezzanine.pages.managers import PageManager
+#from mezzanine.pages.managers import PageManager
 
 
 class ResourceManager(PageManager):
@@ -1038,6 +1180,23 @@ class ResourceManager(PageManager):
         qs = super(ResourceManager, self).get_queryset()
         if self.resource_type:
             qs = qs.filter(resource_type=self.resource_type)
+        return qs
+
+
+class MetaDataManager(PageManager):
+    def __init__(self, metadata_type=None, *args ,**kwargs):
+        self.metadata_type = metadata_type
+        super(MetaDataManager,self).__init__(*args, **kwargs)
+
+    def create(self,*args,**kwargs):
+        if self.metadata_type is None:
+            kwargs.pop('metadata_type',None)
+        return super(MetaDataManager,self).create(*args, **kwargs)
+
+    def get_queryset(self):
+        qs = super(MetaDataManager,self).get_queryset()
+        if self.metadata_type:
+            qs = qs.filter(metadata_type=self.metadata_type)
         return qs
 
 
@@ -1082,6 +1241,9 @@ class AbstractResource(ResourcePermissionsMixin):
                            help_text='Permanent identifier. Never changes once it\'s been set.')
     comments = CommentsField()
     rating = RatingField()
+
+    # here is the new model field to link to the MetaData model
+    metadata_new = models.OneToOneField('MetaData', null=False, blank=False, related_name='resource')
 
     # this is to establish a relationship between a resource and
     # any metadata container object (e.g., CoreMetaData object)
@@ -1426,6 +1588,69 @@ def new_get_content_model(self):
         return rt.objects.get(id=self.id)
     return old_get_content_model(self)
 Page.get_content_model = new_get_content_model
+
+
+# new MetaData container
+class MetaData(models.Model):
+    metadata_type = models.CharField(max_length=50, default="Core")
+    XML_HEADER = '''<?xml version="1.0"?>
+    <!DOCTYPE rdf:RDF PUBLIC "-//DUBLIN CORE//DCMES DTD 2002/07/31//EN"
+    "http://dublincore.org/documents/2002/07/31/dcmes-xml/dcmes-xml-dtd.dtd">'''
+
+    NAMESPACES = {'rdf': "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+                  'rdfs1': "http://www.w3.org/2001/01/rdf-schema#",
+                  'dc': "http://purl.org/dc/elements/1.1/",
+                  'dcterms': "http://purl.org/dc/terms/",
+                  'hsterms': "http://hydroshare.org/terms/"}
+
+    # TODO: Delete this default field (id) which will be created by django
+    id = models.AutoField(primary_key=True)
+
+    def create_element(self, element_model_name, **kwargs):
+        from hydroshare import utils
+        # uses: res.metadata.create_element('creator', {'name': 'john', 'email': 'jhon@gmail.com'})
+        if not self._is_valid_element(element_model_name.lower()):
+            raise ValidationError("Metadata element type:%s is not one of the supported metadata elements."
+                                  % element_model_name)
+
+        element_cls = utils.check_metadata_element_type(element_model_name)
+        element_dict = {'element_type': element_cls.__name__, 'data': kwargs, 'metadata': self}
+        element = element_cls.create(**element_dict)
+        return element
+
+    @property
+    def generics(self):
+        # uses: res.metadata.generics
+        return self.elements.filter(element_type='Generic').all()
+
+    @property
+    def title(self):
+        # uses: res.metadata.title
+        return self.elements.filter(element_type='Title').first()
+
+    @property
+    def creators(self):
+        # uses: res.metadata.creators
+        return self.elements.filter(element_type='Creator').all()
+
+    @property
+    def authors(self):
+        # TODO: Delete this property - this is used to test metadata element form validation
+        # uses: res.metadata.authors
+        return self.elements.filter(element_type='Author').all()
+
+    @classmethod
+    def get_supported_element_names(cls):
+        # TODO: add all other core metadata element class names
+        return ['Generic', 'Author']
+
+    def get_xml(self):
+        # generate xml how we currently doing
+        pass
+
+    def _is_valid_element(self, element_name):
+        allowed_elements = [el.lower() for el in self.get_supported_element_names()]
+        return element_name.lower() in allowed_elements
 
 
 # This model has a one-to-one relation with the AbstractResource model

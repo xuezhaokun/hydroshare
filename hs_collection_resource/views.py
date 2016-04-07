@@ -35,20 +35,20 @@ def update_collection(request, shortkey, *args, **kwargs):
             # get res_id list from POST
             updated_contained_res_id_list = request.POST.getlist("resource_id_list")
 
+            # check duplicated resources being added
             if len(updated_contained_res_id_list) > len(set(updated_contained_res_id_list)):
                 raise Exception("Duplicate resources were found for adding to the collection")
 
-            # check authorization for all new resources being added to the collection
-            # the requesting user should at least have metadata view permission for each of the
-            # new resources to be added to the collection
             for updated_contained_res_id in updated_contained_res_id_list:
+                # check if collection itself is being added
+                if updated_contained_res_id == shortkey:
+                    raise Exception("Cannot add collection itself.")
+                # check authorization for all new resources being added to the collection
+                # the requesting user should at least have metadata view permission for each of the
+                # new resources to be added to the collection
                 if not collection_res_obj.resources.filter(short_id=updated_contained_res_id).exists():
                     res_to_add, _, _ = authorize(request, updated_contained_res_id,
                                                  needed_permission=ACTION_TO_AUTHORIZE.VIEW_METADATA)
-
-                    # for now we are not allowing a collection resource to be added to another collection resource
-                    if res_to_add.resource_type == "CollectionResource":
-                        raise Exception("Resource {0} is a collection resource which can't be added.".format(shortkey))
 
             # remove all resources from the collection
             collection_res_obj.resources.clear()
@@ -56,12 +56,22 @@ def update_collection(request, shortkey, *args, **kwargs):
             # add resources to the collection
             for updated_contained_res_id in updated_contained_res_id_list:
                 updated_contained_res_obj = get_resource_by_shortkey(updated_contained_res_id)
+
+                list_collection_res_obj = find_all_collections(collection_res_obj)
+                list_updated_contained_res_obj = find_all_collections(updated_contained_res_obj)
+                concat_list = list_collection_res_obj + list_updated_contained_res_obj
+                merged_list = list(set(list_collection_res_obj + list_updated_contained_res_obj))
+                if len(concat_list) != len(merged_list):
+                    raise Exception("Failed to add collection into collection.")
+
                 collection_res_obj.resources.add(updated_contained_res_obj)
 
             if collection_res_obj.can_be_public_or_discoverable:
                 metadata_status = "Sufficient to make public"
 
             resource_modified(collection_res_obj, user)
+            t = map_collection(collection_res_obj)
+            logger.error(t)
 
     except Exception as ex:
         err_msg = "update_collection: {0} ; username: {1}; collection_id: {2} ."
@@ -88,7 +98,7 @@ def update_collection_for_deleted_resources(request, shortkey, *args, **kwargs):
         collection_res, is_authorized, user = authorize(request, shortkey,
                                                         needed_permission=ACTION_TO_AUTHORIZE.EDIT_RESOURCE)
 
-        if collection_res.resource_type != "CollectionResource":
+        if collection_res.resource_type.lower() != "collectionresource":
             raise Exception("Resource {0} is not a collection resource.".format(shortkey))
 
         resource_modified(collection_res, user)
@@ -103,3 +113,29 @@ def update_collection_for_deleted_resources(request, shortkey, *args, **kwargs):
     finally:
         return JsonResponse(ajax_response_data)
 
+def traverse_collection(collection_node):
+    list = [collection_node]
+    if collection_node.resource_type.lower() == "collectionresource":
+        for node in collection_node.resources.all():
+            list += traverse_collection(node)
+    return list
+
+def find_all_collections(collection_node):
+    list = []
+    if collection_node.resource_type.lower() == "collectionresource":
+        list += [collection_node]
+        for node in collection_node.resources.all():
+            list += find_all_collections(node)
+    return list
+
+def map_collection(collection_node, level=0):
+    map = "\n" if level == 0 else ""
+    for i in range(level):
+        map += "---"
+    map += "> {0} ({1} {2})\n".format(collection_node.title, collection_node.resource_type, collection_node.short_id)
+    level += 1
+
+    if collection_node.resource_type.lower() == "collectionresource":
+        for node in collection_node.resources.all():
+            map += map_collection(node, level)
+    return map

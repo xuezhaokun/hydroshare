@@ -306,7 +306,7 @@
         var page_length_change = false;
         $(document).ready(function() {
             // disable "Publish" btn
-            $("#publish").hide();
+{#            $("#publish").hide();#}
 {#            $("#new-version").hide();#}
 
             //------------------ table headers ------------
@@ -441,12 +441,12 @@
                 <button type="button" class="close" data-dismiss="alert">x</button> \
                 <strong>Success! </strong> \
                 Collection updated.\
-            </div>'
+            </div>';
             $alert_error = '<div class="alert alert-danger" id="error-alert"> \
                 <button type="button" class="close" data-dismiss="alert">x</button> \
                 <strong>Error! </strong> \
                 Collection failed to update.\
-            </div>'
+            </div>';
             $form=$('#' + form_id);
             var resource_id_list = [];
             $('#collection-table').DataTable().rows().every(function()
@@ -486,6 +486,11 @@
                         });
                     }
                     else {
+                        $alert_error = '<div class="alert alert-danger" id="error-alert"> \
+                <button type="button" class="close" data-dismiss="alert">x</button> \
+                <strong>Error! </strong>' + result.msg + '</div>';
+
+                        result.msg
                         $('body > .container').append($alert_error);
                         $(".alert-danger").fadeTo(3000, 500).fadeOut(1000, function(){
                             $(document).trigger("submit-error");

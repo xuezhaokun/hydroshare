@@ -139,3 +139,20 @@ def map_collection(collection_node, level=0):
         for node in collection_node.resources.all():
             map += map_collection(node, level)
     return map
+
+# this function works with 3rd party lib: treelib
+def create_collection_tree_structure(collection_node, parent_node_id, tree_obj):
+    result = {"status": "success", "tree_obj": tree_obj}
+    try:
+        if parent_node_id == None and tree_obj == None:
+            tree_obj = Tree()
+        node = Node(collection_node.resource_type, collection_node.short_id)
+        tree_obj.add_node(node, parent_node_id)
+        if collection_node.resource_type.lower() == "collectionresource":
+            for contained_res in collection_node.resources.all():
+                create_collection_tree_structure(contained_res, node.identifier, tree_obj)
+    except Exception as ex:
+        result["status"] = "error"
+        result["tree_obj"] = None
+    finally:
+        return result

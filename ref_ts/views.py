@@ -12,6 +12,7 @@ from django.template import RequestContext
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect, HttpResponseNotFound, FileResponse
 from django.shortcuts import render_to_response
+from rest_framework.decorators import api_view
 
 from hs_core import hydroshare
 from hs_core.views.utils import authorize, ACTION_TO_AUTHORIZE
@@ -23,9 +24,8 @@ from .forms import ReferencedSitesForm, ReferencedVariablesForm, GetTSValuesForm
 
 PREVIEW_NAME = "preview.png"
 HIS_CENTRAL_URL = 'http://hiscentral.cuahsi.org/webservices/hiscentral.asmx/GetWaterOneFlowServiceInfo'
-BLANK_FIELD_STRING = ""
 
-logger = logging.getLogger("django")
+logger = logging.getLogger(__name__)
 
 # query HIS central to get all available HydroServer urls
 def get_his_urls(request):
@@ -114,7 +114,7 @@ def time_series_from_service(request):
             noDataValue = ts['noDataValue']
 
             tempdir = tempfile.mkdtemp()
-            ts_utils.create_vis_2(path=tempdir, site_name=site, data=data, xlabel='Date',
+            ts_utils.create_vis_2(path=tempdir, data=data, xlabel='Date',
                                 variable_name=variable_name, units=units, noDataValue=noDataValue,
                                 predefined_name=PREVIEW_NAME)
             tempdir_last_six_chars = tempdir[-6:]
@@ -161,7 +161,7 @@ def verify_rest_url(request):
         if f.is_valid():
             params = f.cleaned_data
             url = params['url']
-            ts = requests.get(url)
+            ts = requests.get(url, verify=False)
             ts_xml = etree.XML(ts.text.encode('utf-8'))
             if ts.status_code == 200 and 'timeseriesresponse' in ts_xml.tag.lower():
                 return json_or_jsonp(request, {"status": "success"})
@@ -186,45 +186,10 @@ def create_ref_time_series(request, *args, **kwargs):
         frm = CreateRefTimeSeriesForm(request.POST)
         if frm.is_valid():
             metadata = []
-            if ts_dict["longitude"] is not None and ts_dict["latitude"] is not None:
-                coverage_point = {"Coverage": {"type": "point",
-                                      "value": {"east": ts_dict["longitude"],
-                                                "north": ts_dict["latitude"],
-                                                "units": "WGS 84 EPSG:4326"}
-                                     }
-                                 }
-                metadata.append(coverage_point)
-
-            if ts_dict["start_date"] is not None and ts_dict["end_date"] is not None:
-                coverage_period ={"Coverage": {"type": "period",
-                                      "value": {"start": ts_dict["start_date"],
-                                                "end": ts_dict["end_date"]}
-                                     }
-                        }
-                metadata.append(coverage_period)
-
-            metadata += [{"ReferenceURL": {"value": url, "type": reference_type}},
-                        {"Site": {"name": ts_dict['site_name'] if ts_dict['site_name'] is not None else BLANK_FIELD_STRING,
-                                  "code": ts_dict['site_code'] if ts_dict['site_code'] is not None else BLANK_FIELD_STRING,
-                                  "net_work": ts_dict['net_work'] if ts_dict['net_work'] is not None else BLANK_FIELD_STRING,
-                                  "latitude": ts_dict['latitude'],
-                                  "longitude": ts_dict['longitude']
-                                  }
-                        },
-                        {"Variable": {"name": ts_dict['variable_name'] if ts_dict['variable_name'] is not None else BLANK_FIELD_STRING,
-                                      "code": ts_dict['variable_code'] if ts_dict['variable_code'] is not None else BLANK_FIELD_STRING
-                                      }
-                        },
-                        {"DataSource": {"code": ts_dict['source_code'] if ts_dict['source_code'] is not None else BLANK_FIELD_STRING}},
-                        {"Method": {"code": ts_dict['method_code'] if ts_dict['method_code'] is not None else BLANK_FIELD_STRING,
-                                    "description": ts_dict['method_description'] if ts_dict['method_description'] is not None else BLANK_FIELD_STRING
-                                   }
-                        },
-                        {"QualityControlLevel": {
-                            "code": ts_dict['quality_control_level_code'] if ts_dict['quality_control_level_code'] is not None else BLANK_FIELD_STRING,
-                            "definition": ts_dict['quality_control_level_definition'] if ts_dict['quality_control_level_definition'] is not None else BLANK_FIELD_STRING
-                                                 }
-                        }]
+            ts_utils.prepare_metadata_list(metadata=metadata,
+                                           ts_dict=ts_dict,
+                                           url=url,
+                                           reference_type=reference_type)
 
             res = hydroshare.create_resource(
                 resource_type='RefTimeSeriesResource',
@@ -237,16 +202,19 @@ def create_ref_time_series(request, *args, **kwargs):
 
             request.session['just_created'] = True
             return HttpResponseRedirect(res.get_absolute_url())
-
+        else:
+            raise Exception("Parameters validation error")
     except Exception as ex:
         logger.exception("create_ref_time_series: %s" % (ex.message))
         context = {'resource_creation_error': "Error: failed to create resource." }
         return render_to_response('pages/create-ref-time-series.html', context, context_instance=RequestContext(request))
 
-def download_refts_resource_files(request, shortkey, *args, **kwargs):
+
+def download_refts_resource_bag(request, shortkey, *args, **kwargs):
     tempdir = None
     try:
-        _, authorized, _ = authorize(request, shortkey, needed_permission=ACTION_TO_AUTHORIZE.VIEW_RESOURCE,
+        _, authorized, _ = authorize(request, shortkey,
+                                     needed_permission=ACTION_TO_AUTHORIZE.VIEW_RESOURCE,
                                      raises_exception=False)
         if not authorized:
             response = HttpResponse(status=401)
@@ -254,35 +222,81 @@ def download_refts_resource_files(request, shortkey, *args, **kwargs):
             return response
 
         path = "bags/" + str(shortkey) + ".zip"
-        response_irods = download_bag_from_irods(request, path)
+        response_irods = download_bag_from_irods(request, path, use_async=False)
 
         tempdir = tempfile.mkdtemp()
-        bag_save_to_path = tempdir + "/" + str(shortkey) + ".zip"
-
-        with open(bag_save_to_path, 'wb+') as f:
-            for chunk in response_irods.streaming_content:
-                f.write(chunk)
-
-        res_files_fp_arr = ts_utils.generate_resource_files(shortkey, tempdir)
-
-        bag_zip_obj = zipfile.ZipFile(bag_save_to_path, "a", zipfile.ZIP_DEFLATED)
-        bag_content_base_folder = str(shortkey) + "/data/contents/" # _RESOURCE_ID_/data/contents/
-        for fn_fp in res_files_fp_arr:
-            fh = open(fn_fp['fullpath'], 'r')
-            bag_zip_obj.writestr(bag_content_base_folder + fn_fp['fname'], fh.read())
-            fh.close()
-        bag_zip_obj.close()
-
-        response = FileResponse(open(bag_save_to_path, 'rb'), content_type='application/zip')
-        response['Content-Disposition'] = 'attachment; filename="' + str(shortkey) + '.zip"'
-        response['Content-Length'] = os.path.getsize(bag_save_to_path)
+        response = assemble_refts_bag(shortkey, response_irods.streaming_content,
+                                      temp_dir=tempdir)
 
         return response
     except Exception as e:
-        logger.exception("download_resource_files: %s" % (e.message))
+        logger.exception("download_refts_resource_bag: %s" % (e.message))
         response = HttpResponse(status=503)
         response.content = "<h3>Failed to download this resource!</h3>"
         return response
     finally:
         if tempdir is not None:
            shutil.rmtree(tempdir)
+
+
+@api_view(['GET'])
+def rest_download_refts_resource_bag(request, shortkey, *args, **kwargs):
+    tempdir = None
+    _, authorized, _ = authorize(request, shortkey,
+                                 needed_permission=ACTION_TO_AUTHORIZE.VIEW_RESOURCE,
+                                 raises_exception=True)
+    try:
+
+        path = "bags/" + str(shortkey) + ".zip"
+        response_irods = download_bag_from_irods(request, path, rest_call=True, use_async=False)
+
+        if not response_irods.streaming:
+            raise Exception("Failed to stream RefTS bag")
+        else:
+            tempdir = tempfile.mkdtemp()
+            response = assemble_refts_bag(shortkey, response_irods.streaming_content,
+                                          temp_dir=tempdir)
+            return response
+
+    except Exception as e:
+        logger.exception("rest_download_refts_resource_bag: %s" % (e.message))
+        response = HttpResponse(status=503)
+        response.content = "Failed to download this resource!"
+        return response
+    finally:
+        if tempdir is not None:
+           shutil.rmtree(tempdir)
+
+
+def assemble_refts_bag(res_id, empty_bag_stream, temp_dir=None):
+    """
+    save empty_bag_stream to local; download latest wml;
+    put wml into empty bag; return filled-in bag in FileResponse
+    :param res_id: the resource id of the RefTS resource
+    :param bag_stream: the stream of the empty bag
+    :param temp_dir: a folder to store files locally
+    :return: FileResponse obj
+    """
+    if temp_dir is None:
+        temp_dir = tempfile.mkdtemp()
+    bag_save_to_path = temp_dir + "/" + str(res_id) + ".zip"
+
+    with open(bag_save_to_path, 'wb+') as f:
+        for chunk in empty_bag_stream:
+            f.write(chunk)
+
+    res_files_fp_arr = ts_utils.generate_resource_files(res_id, temp_dir)
+
+    bag_zip_obj = zipfile.ZipFile(bag_save_to_path, "a", zipfile.ZIP_DEFLATED)
+    bag_content_base_folder = str(res_id) + "/data/contents/"  # _RESOURCE_ID_/data/contents/
+    for fn_fp in res_files_fp_arr:
+        fh = open(fn_fp['fullpath'], 'r')
+        bag_zip_obj.writestr(bag_content_base_folder + fn_fp['fname'], fh.read())
+        fh.close()
+    bag_zip_obj.close()
+
+    response = FileResponse(open(bag_save_to_path, 'rb'), content_type='application/zip')
+    response['Content-Disposition'] = 'attachment; filename="' + str(res_id) + '.zip"'
+    response['Content-Length'] = os.path.getsize(bag_save_to_path)
+
+    return response

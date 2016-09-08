@@ -68,7 +68,7 @@ def landing_page(request, page):
                            HTML('<div class="form-group" id="irodsworkflowprocessors"> '
                                 '{% load crispy_forms_tags %} '
                                 '{% crispy irods_workflow_processors_form %} '
-                                '</div> '),
+                                '</div></div></div>'),
         )
 
 

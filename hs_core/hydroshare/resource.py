@@ -4,7 +4,7 @@ import shutil
 import logging
 import string
 import copy
-
+import time
 import requests
 
 from django.conf import settings
@@ -23,7 +23,7 @@ from hs_core import signals
 from hs_core.hydroshare import utils
 from hs_access_control.models import ResourceAccess, UserResourcePrivilege, PrivilegeCodes
 from hs_labels.models import ResourceLabels
-
+from django.http import HttpResponseBadRequest
 
 FILE_SIZE_LIMIT = 1*(1024 ** 3)
 FILE_SIZE_LIMIT_FOR_DISPLAY = '1G'
@@ -1201,3 +1201,50 @@ def get_science_metadata_xml(resource_short_id):
     """
     res = utils.get_resource_by_shortkey(resource_short_id)
     return res.metadata.get_xml()
+
+
+def create_cloud_env_for_resource(pk, lifetime=1):
+    res = utils.get_resource_by_shortkey(pk)
+    collab_json = res.get_collaboration_json(lifetime=lifetime)
+    url = "http://152.54.9.88:8080/collaboration/{collab_id}".format(collab_id=pk)
+    # exceptions will be raised if PUT request fails
+    response = requests.put(url, headers={'content-type': 'application/json'},
+                            data=collab_json, auth=('hyi', 'hyi'))
+
+    if response.status_code == status.HTTP_409_CONFLICT:
+        # collaboration id already exists, delete it first, then put again
+        response = requests.delete(url, auth=('hyi', 'hyi'))
+        response = requests.put(url, headers={'content-type': 'application/json'},
+                            data=collab_json, auth=('hyi', 'hyi'))
+
+    if not response.status_code == status.HTTP_200_OK and not response.status_code == status.HTTP_201_CREATED:
+        return HttpResponseBadRequest(content=response.text)
+
+    response = requests.post(url, headers={'content-type': 'application/json'}, auth=('hyi', 'hyi'))
+
+    if not response.status_code == status.HTTP_200_OK:
+        return HttpResponseBadRequest(content=response.text)
+
+    for step in range(30):
+        response = requests.get(url, auth=('hyi', 'hyi'))
+        rjson = response.json()
+        if not response.status_code == status.HTTP_200_OK:
+            return HttpResponseBadRequest(content=response.text)
+        elif rjson['state'] == 'active':
+            # query resource node
+            res_entity = None
+            for entity in rjson['entities']:
+                if entity['id'] == 'resource':
+                    res_entity = entity
+            if res_entity == None:
+                return "resource entity does not exist in the JSON response."
+            ip = res_entity['node-groups'][0]['nodes'][0]['public-ip']
+            ret_msg = 'Congratulations! A Virtual Machine (VM) {ip} has been dynamically provisioned by RADII with your ' \
+                      'selected HydroShare resource bag transferred to your home directory. You can ssh to this VM ' \
+                      'and do work there (e.g., ssh your_hydroshare_username@{ip}). This VM is also an iRODS resource server that is part ' \
+                      'of the HydroShare hydroshareuserZone User File Space on users.hydroshare.org.'.format(ip=ip)
+            return ret_msg
+
+        time.sleep(10)
+
+    return "The RADII collaboration VM provision request timed out - it cannot be provisioned within 5 minutes"

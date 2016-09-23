@@ -104,6 +104,7 @@ def get_page_context(page, user, resource_edit=False, extended_metadata_layout=N
     just_created = False
     new_version_create_resource_error = None
     just_published = False
+    cloud_ip_message = None
     if request:
         validation_error = check_for_validation(request)
 
@@ -118,6 +119,10 @@ def get_page_context(page, user, resource_edit=False, extended_metadata_layout=N
         just_published = request.session.get('just_published', False)
         if 'just_published' in request.session:
             del request.session['just_published']
+
+        cloud_ip_message = request.session.get('cloud_ip_message', None)
+        if 'cloud_ip_message' in request.session:
+            del request.session['cloud_ip_message']
 
     bag_url = AbstractResource.bag_url(content_model.short_id)
 
@@ -201,6 +206,7 @@ def get_page_context(page, user, resource_edit=False, extended_metadata_layout=N
                    'discoverable': discoverable,
                    'resource_is_mine': resource_is_mine,
                    'is_resource_specific_tab_active': False,
+                   'cloud_ip_message': cloud_ip_message,
                    'belongs_to_collections': belongs_to_collections
         }
 

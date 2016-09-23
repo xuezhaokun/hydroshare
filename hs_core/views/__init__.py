@@ -12,7 +12,7 @@ from django.contrib.sites.models import Site
 from django.contrib import messages
 from django.utils.decorators import method_decorator
 from django.core.exceptions import ValidationError, PermissionDenied, ObjectDoesNotExist
-from django.http import HttpResponseRedirect, HttpResponse, JsonResponse
+from django.http import HttpResponseRedirect, HttpResponse, JsonResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, render_to_response, render, redirect
 from django.template import RequestContext
 from django.core import signing
@@ -427,6 +427,17 @@ def publish(request, shortkey, *args, **kwargs):
         request.session['validation_error'] = exp.message
     else:
         request.session['just_published'] = True
+    return HttpResponseRedirect(request.META['HTTP_REFERER'])
+
+
+def create_cloud_env_for_resource(request, shortkey, *args, **kwargs):
+    res, _, user = authorize(request, shortkey,
+                             needed_permission=ACTION_TO_AUTHORIZE.EDIT_RESOURCE)
+    vm_lifetime = int(request.POST['lifetime'])
+    ret = hydroshare.create_cloud_env_for_resource(shortkey, lifetime=vm_lifetime)
+    if isinstance(ret, HttpResponseBadRequest):
+        return ret
+    request.session['cloud_ip_message'] = ret
     return HttpResponseRedirect(request.META['HTTP_REFERER'])
 
 

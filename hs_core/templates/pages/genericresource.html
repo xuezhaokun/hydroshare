@@ -41,6 +41,13 @@
                     </div>
                 {% endif %}
 
+                {% if cloud_ip_message %}
+                    <div class="alert alert-success alert-dismissible" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <strong>{{ cloud_ip_message }}</strong>
+                    </div>
+                {% endif %}
+
                 {# ======= Title ======= #}
                 {% include "resource-landing-page/title-section.html" %}
 
@@ -256,6 +263,12 @@
                                     <a href="#contactTab" data-toggle="tab" title="Contact">
                                         <span class="glyphicon glyphicon-user"> </span>
                                         &nbspAuthorship
+                                    </a>
+                                </li>
+                                <li class="col-xs-2 col-md-2">
+                                    <a href="#cloudEnvTab" data-toggle="tab" title="Virtual Infrastrcture">
+                                        <span class="glyphicon glyphicon-user"> </span>
+                                        &nbsp;Virtual Infrastrcture
                                     </a>
                                 </li>
                                 {% if spatial_coverage.north or spatial_coverage.northlimit or temporal_coverage or metadata_form %}
@@ -498,6 +511,18 @@
                                                 </tbody>
                                             </table>
                                         </div>
+                                    {% endif %}
+                                </div>
+                                <!-- ========= Cloud Environment TAB ========= -->
+                                <div class="tab-pane" id="cloudEnvTab">
+                                    <a id="btn-cloud-env" type="button" class="btn btn-default row-selector" data-toggle="modal" data-target="#create-cloud-env-dialog">
+                                        <span title='Create virtual infrastructure using RADII' class="button-label">Create virtual infrastructure using RADII</span>
+                                        <a target="_blank" href="http://renci.org/radii/">Learn more about the RADII Collaboration-to-infrastructure project</a>
+                                    </a>
+                                    {% if cloud_ip_message %}
+                                    <div>
+                                        <p><strong>{{ cloud_ip_message }}</strong></p>
+                                    </div>
                                     {% endif %}
                                 </div>
                                 <!-- ========= COVERAGE TAB ========= -->

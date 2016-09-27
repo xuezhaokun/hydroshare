@@ -1546,47 +1546,19 @@ class BaseResource(Page, AbstractResource):
         return AbstractResource.can_view(self, request)
 
     # create collaboration JSON object for using RADII to provision a cloud environment for the resource
-    def get_collaboration_json(self, lifetime=1):
-        res_bag_file_path = '/{zone}/home/{uname}/bags/{res_id}.zip'.format(
-            zone=settings.IRODS_ZONE, uname=settings.IRODS_USERNAME, res_id=self.short_id)
-        attr_data = {'resource': {"icat-server": "users.hydroshare.org",
-                                  "location": "sl",
-                                  "file-path": res_bag_file_path}}
+    def get_collaboration_json(self):
+        res_full_fname = ''
+        if ResourceFile.objects.filter(object_id=self.id).exists():
+            fname = ResourceFile.objects.filter(object_id=self.id)[0]
+            res_full_fname = '/{zone}/home/{uname}/{res_id}/data/contents/{fname}'.format(
+                zone=settings.IRODS_ZONE,
+                uname=settings.IRODS_USERNAME,
+                res_id=self.short_id,
+                fname=fname)
         data = {}
-        data['action'] = 'save'
-        data['parameters'] = {
-            "collaboration": {
-                "data-policy": {"tags": []},
-                "entities": [
-                    {
-                        "id": "resource",
-                        "type": "datastore",
-                        "authorized-users": ["hyi"],
-                        "attributes": attr_data,
-                        "template": {"id": "hs_resource"}
-                    },
-                    {
-                        "id": "icat",
-                        "type": "external",
-                        "connectivity": {
-                            "stitchport": {"id": "bf40g"}
-                        }
-                    }
-                ],
-                "collaborators": ["hyi"],
-                "name": "hydroshare",
-                "owner": {"name": "hyi"},
-                "lifetime": lifetime,
-                "dataflows": [
-                    {
-                        "source": {"id": "resource"},
-                        "id": "data",
-                        "target": {"id": "icat"}
-                    }
-                ],
-                "id": "hydroshare"
-            }
-        }
+        data['containerId'] = 'mjstealey/docker-modflow'
+        data['bandwidth'] = 100
+        data['input'] = [res_full_fname]
         return json.dumps(data)
 
 

@@ -1203,10 +1203,11 @@ def get_science_metadata_xml(resource_short_id):
     return res.metadata.get_xml()
 
 
-def create_cloud_env_for_resource(pk, lifetime=1):
+def create_cloud_env_for_resource(pk):
     res = utils.get_resource_by_shortkey(pk)
-    collab_json = res.get_collaboration_json(lifetime=lifetime)
-    url = "http://152.54.9.88:8080/collaboration/{collab_id}".format(collab_id=pk)
+    collab_json = res.get_collaboration_json()
+    url = "http://152.54.9.88:8080/collaboration/{collab_id}/job/<job_id>".format(collab_id=pk,
+                                                                                  job_id=pk)
     # exceptions will be raised if PUT request fails
     response = requests.put(url, headers={'content-type': 'application/json'},
                             data=collab_json, auth=('hyi', 'hyi'))
@@ -1217,34 +1218,13 @@ def create_cloud_env_for_resource(pk, lifetime=1):
         response = requests.put(url, headers={'content-type': 'application/json'},
                             data=collab_json, auth=('hyi', 'hyi'))
 
-    if not response.status_code == status.HTTP_200_OK and not response.status_code == status.HTTP_201_CREATED:
+    if not response.status_code == status.HTTP_200_OK and \
+            not response.status_code == status.HTTP_201_CREATED:
         return HttpResponseBadRequest(content=response.text)
 
-    response = requests.post(url, headers={'content-type': 'application/json'}, auth=('hyi', 'hyi'))
+    ret_msg = 'Congratulations! A job has been successfully submitted for RADII to dynamically ' \
+              'provision a Virtual Machine (VM) on which modflow model will be run using ' \
+              'inputs from this resource. The output from the model run will be added to ' \
+              'this resource after the model run completes.'
 
-    if not response.status_code == status.HTTP_200_OK:
-        return HttpResponseBadRequest(content=response.text)
-
-    for step in range(30):
-        response = requests.get(url, auth=('hyi', 'hyi'))
-        rjson = response.json()
-        if not response.status_code == status.HTTP_200_OK:
-            return HttpResponseBadRequest(content=response.text)
-        elif rjson['state'] == 'active':
-            # query resource node
-            res_entity = None
-            for entity in rjson['entities']:
-                if entity['id'] == 'resource':
-                    res_entity = entity
-            if res_entity == None:
-                return "resource entity does not exist in the JSON response."
-            ip = res_entity['node-groups'][0]['nodes'][0]['public-ip']
-            ret_msg = 'Congratulations! A Virtual Machine (VM) {ip} has been dynamically provisioned by RADII with your ' \
-                      'selected HydroShare resource bag transferred to your home directory. You can ssh to this VM ' \
-                      'and do work there (e.g., ssh your_hydroshare_username@{ip}). This VM is also an iRODS resource server that is part ' \
-                      'of the HydroShare hydroshareuserZone User File Space on users.hydroshare.org.'.format(ip=ip)
-            return ret_msg
-
-        time.sleep(10)
-
-    return "The RADII collaboration VM provision request timed out - it cannot be provisioned within 5 minutes"
+    return ret_msg

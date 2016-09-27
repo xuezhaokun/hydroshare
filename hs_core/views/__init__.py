@@ -3,6 +3,10 @@ import json
 import datetime
 import pytz
 import logging
+import os
+import requests
+
+from rest_framework import status
 
 from django.core.mail import send_mail
 from django.contrib.auth import authenticate, login as auth_login
@@ -32,7 +36,7 @@ from django_irods.storage import IrodsStorage
 from django_irods.icommands import SessionException
 
 from hs_core import hydroshare
-from hs_core.hydroshare.utils import get_resource_by_shortkey, resource_modified
+from hs_core.hydroshare.utils import get_resource_by_shortkey, resource_modified, current_site_url
 from .utils import authorize, upload_from_irods, ACTION_TO_AUTHORIZE, run_script_to_update_hyrax_input_files, \
     get_my_resources_list, send_action_to_take_email
 from hs_core.models import GenericResource, resource_processor, CoreMetaData, Relation
@@ -430,15 +434,65 @@ def publish(request, shortkey, *args, **kwargs):
     return HttpResponseRedirect(request.META['HTTP_REFERER'])
 
 
-def create_cloud_env_for_resource(request, shortkey, *args, **kwargs):
+def create_cloud_env_for_resource(request, shortkey):
     res, _, user = authorize(request, shortkey,
                              needed_permission=ACTION_TO_AUTHORIZE.EDIT_RESOURCE)
-    vm_lifetime = int(request.POST['lifetime'])
-    ret = hydroshare.create_cloud_env_for_resource(shortkey, lifetime=vm_lifetime)
+    ret = hydroshare.create_cloud_env_for_resource(shortkey)
     if isinstance(ret, HttpResponseBadRequest):
         return ret
     request.session['cloud_ip_message'] = ret
     return HttpResponseRedirect(request.META['HTTP_REFERER'])
+
+
+def add_model_output_to_resource(request, shortkey, output_dir_name):
+    res, _, user = authorize(request, shortkey,
+                             needed_permission=ACTION_TO_AUTHORIZE.EDIT_RESOURCE)
+    res_url = current_site_url()+"/resource/{}".format(shortkey)
+    output_full_path = '/{zone}/home/{username}/{output}'.format(
+        zone=settings.HS_USER_IRODS_ZONE, username=user.username, output=output_dir_name)
+    istorage = IrodsStorage('federated')
+    output_file_list = istorage.listdir(output_full_path)[1]
+    output_file_full_list = []
+    for fname in output_file_list:
+        output_file_full_list.append(os.path.join(output_full_path, fname))
+
+    try:
+        utils.resource_file_add_pre_process(resource=res, files=None, user=user,
+                                            extract_metadata=False,
+                                            fed_res_file_names=output_file_full_list)
+    except hydroshare.utils.ResourceFileSizeException as ex:
+        request.session['file_size_error'] = ex.message
+        return HttpResponseRedirect(res_url)
+
+    except (hydroshare.utils.ResourceFileValidationException, Exception) as ex:
+        request.session['validation_error'] = ex.message
+        return HttpResponseRedirect(res_url)
+
+    try:
+        hydroshare.utils.resource_file_add_process(resource=res, files=None, user=user,
+                                                   extract_metadata=False,
+                                                   fed_res_file_names=output_file_full_list)
+
+    except (hydroshare.utils.ResourceFileValidationException, Exception) as ex:
+        if ex.message:
+            request.session['validation_error'] = ex.message
+            return HttpResponseRedirect(res_url)
+        elif ex.stderr:
+            request.session['validation_error'] = ex.stderr
+            return HttpResponseRedirect(res_url)
+    except SessionException as ex:
+        request.session['validation_error'] = ex.stderr
+        return HttpResponseRedirect(res_url)
+
+    # clean up containers after files are added successfully
+    #url = "http://152.54.9.88:8080/collaboration/{collab_id}/job/<job_id>".format(collab_id=shortkey,
+    #                                                                              job_id=shortkey)
+    #response = requests.delete(url, auth=('hyi', 'hyi'))
+    #if not response.status_code == status.HTTP_200_OK and \
+    #        not response.status_code == status.HTTP_201_CREATED:
+    #    return HttpResponseBadRequest(content=response.text)
+
+    return HttpResponseRedirect(res_url)
 
 
 def set_resource_flag(request, shortkey, *args, **kwargs):

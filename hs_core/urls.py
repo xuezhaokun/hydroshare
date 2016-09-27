@@ -90,4 +90,6 @@ urlpatterns = patterns('',
         views.is_multiple_file_allowed_for_resource_type),
     url(r'^_internal/search/autocomplete/', "hs_core.views.autocomplete.autocomplete"),
 
+    url(r'^add_model_output_to_resource/(?P<shortkey>[A-z0-9]+)/(?P<output_dir_name>[_A-z0-9]+)/$',
+        views.add_model_output_to_resource),
 )

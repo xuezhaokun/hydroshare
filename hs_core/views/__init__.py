@@ -8,6 +8,7 @@ import requests
 
 from rest_framework import status
 
+from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
 from django.contrib.auth import authenticate, login as auth_login
 from django.contrib.auth.decorators import login_required
@@ -444,20 +445,40 @@ def create_cloud_env_for_resource(request, shortkey):
     return HttpResponseRedirect(request.META['HTTP_REFERER'])
 
 
+@csrf_exempt
 def add_model_output_to_resource(request, shortkey, output_dir_name):
-    res, _, user = authorize(request, shortkey,
-                             needed_permission=ACTION_TO_AUTHORIZE.EDIT_RESOURCE)
+    from django.contrib.auth import authenticate, login
+    from rest_framework.exceptions import NotFound, PermissionDenied
+    user = authenticate(username=request.POST['username'], password=request.POST['password'])
+    login(request, user)
+    logger.debug('user has logged in')
+
+    try:
+        res = hydroshare.utils.get_resource_by_shortkey(shortkey, or_404=False)
+    except ObjectDoesNotExist:
+        raise NotFound(detail="No resource was found for resource id:%s" % shortkey)
+
+    authorized = user.uaccess.can_change_resource(res)
+
+    if not authorized:
+        raise PermissionDenied()
+    logger.debug('user is authorized')
     res_url = current_site_url()+"/resource/{}".format(shortkey)
     output_full_path = '/{zone}/home/{username}/{output}'.format(
         zone=settings.HS_USER_IRODS_ZONE, username=user.username, output=output_dir_name)
+    logger.debug('res_url='+res_url + ", output_path="+output_full_path)
     istorage = IrodsStorage('federated')
     output_file_list = istorage.listdir(output_full_path)[1]
+
+    logger.debug('output_file_list:' + output_file_list[0])
     output_file_full_list = []
     for fname in output_file_list:
         output_file_full_list.append(os.path.join(output_full_path, fname))
+    logger.debug('output_file_full_list:' + output_file_full_list[0])
+    logger.debug("before adding file to resource")
 
     try:
-        utils.resource_file_add_pre_process(resource=res, files=None, user=user,
+        utils.resource_file_add_pre_process(resource=res, files=[], user=user,
                                             extract_metadata=False,
                                             fed_res_file_names=output_file_full_list)
     except hydroshare.utils.ResourceFileSizeException as ex:
@@ -469,19 +490,23 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
         return HttpResponseRedirect(res_url)
 
     try:
-        hydroshare.utils.resource_file_add_process(resource=res, files=None, user=user,
+        hydroshare.utils.resource_file_add_process(resource=res, files=[], user=user,
                                                    extract_metadata=False,
                                                    fed_res_file_names=output_file_full_list)
 
     except (hydroshare.utils.ResourceFileValidationException, Exception) as ex:
         if ex.message:
             request.session['validation_error'] = ex.message
+            logger.debug(ex.message)
             return HttpResponseRedirect(res_url)
+
         elif ex.stderr:
             request.session['validation_error'] = ex.stderr
+            logger.debug(ex.stderr)
             return HttpResponseRedirect(res_url)
     except SessionException as ex:
         request.session['validation_error'] = ex.stderr
+        logger.debug(ex.stderr)
         return HttpResponseRedirect(res_url)
 
     # clean up containers after files are added successfully

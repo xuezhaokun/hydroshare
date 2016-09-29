@@ -52,7 +52,6 @@ from hs_collection_resource.models import CollectionDeletedResource
 
 logger = logging.getLogger(__name__)
 
-
 def short_url(request, *args, **kwargs):
     try:
         shortkey = kwargs['shortkey']
@@ -513,7 +512,17 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
     #if not response.status_code == status.HTTP_200_OK and \
     #        not response.status_code == status.HTTP_201_CREATED:
     #    return HttpResponseBadRequest(content=response.text)
+    res_refresh_page_url = current_site_url() + \
+                           "/hsapi/refresh_resource_landing_page/{}/".format(shortkey)
+    return HttpResponseRedirect(res_refresh_page_url)
 
+
+def refresh_resource_landing_page(request, shortkey):
+    request.session['cloud_ip_message'] = 'Congratulations! The model run in the provisioned ' \
+                                          'virtual infrastructure has completed and the model ' \
+                                          'output files have been successfully added into ' \
+                                          'this resource.'
+    res_url = current_site_url() + "/resource/{}".format(shortkey)
     return HttpResponseRedirect(res_url)
 
 

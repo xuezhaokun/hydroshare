@@ -92,4 +92,6 @@ urlpatterns = patterns('',
 
     url(r'^add_model_output_to_resource/(?P<shortkey>[A-z0-9]+)/(?P<output_dir_name>[_A-z0-9]+)/$',
         views.add_model_output_to_resource),
+    url(r'^refresh_resource_landing_page/(?P<shortkey>[A-z0-9]+)/$',
+        views.refresh_resource_landing_page),
 )

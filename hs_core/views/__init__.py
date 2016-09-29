@@ -4,9 +4,6 @@ import datetime
 import pytz
 import logging
 import os
-import requests
-
-from rest_framework import status
 
 from django.views.decorators.csrf import csrf_exempt
 from django.core.mail import send_mail
@@ -483,11 +480,11 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
                                             fed_res_file_names=output_file_full_list)
     except hydroshare.utils.ResourceFileSizeException as ex:
         request.session['file_size_error'] = ex.message
-        return HttpResponseRedirect(res_url)
+        return HttpResponseBadRequest(content=ex.message)
 
     except (hydroshare.utils.ResourceFileValidationException, Exception) as ex:
         request.session['validation_error'] = ex.message
-        return HttpResponseRedirect(res_url)
+        return HttpResponseBadRequest(content=ex.message)
 
     try:
         hydroshare.utils.resource_file_add_process(resource=res, files=[], user=user,
@@ -498,16 +495,16 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
         if ex.message:
             request.session['validation_error'] = ex.message
             logger.debug(ex.message)
-            return HttpResponseRedirect(res_url)
+            return HttpResponseBadRequest(content=ex.message)
 
         elif ex.stderr:
             request.session['validation_error'] = ex.stderr
             logger.debug(ex.stderr)
-            return HttpResponseRedirect(res_url)
+            return HttpResponseBadRequest(content=ex.stderr)
     except SessionException as ex:
         request.session['validation_error'] = ex.stderr
         logger.debug(ex.stderr)
-        return HttpResponseRedirect(res_url)
+        return HttpResponseBadRequest(content=ex.stderr)
 
     # clean up containers after files are added successfully
     #url = "http://152.54.9.88:8080/collaboration/{collab_id}/job/<job_id>".format(collab_id=shortkey,

@@ -4,7 +4,6 @@ import shutil
 import logging
 import string
 import copy
-import time
 import requests
 
 from django.conf import settings

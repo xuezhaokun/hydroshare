@@ -43,6 +43,12 @@
 
                 {% if cloud_ip_message %}
                     <div class="alert alert-success alert-dismissible" role="alert">
+                    <div id="action-dialog" title="Adding model output to HydroShare" style="display: none;">
+                        <p>Congratulations! The model run has completed. Do you want to add the model
+                            output to this resource or create a new resource with the model output?</p>
+                    </div>
+                    <input type="hidden" id="cloud_ip_message" name=""cloud_ip_message" value="{{ cloud_ip_message }}">
+                    <input type="hidden" id="res_id" name="res_id" value="{{ cm.short_id }}">
                         <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                         <strong>{{ cloud_ip_message }}</strong>
                     </div>
@@ -268,7 +274,7 @@
                                 <li class="col-xs-2 col-md-2">
                                     <a href="#cloudEnvTab" data-toggle="tab" title="Virtual Infrastrcture">
                                         <span class="glyphicon glyphicon-user"> </span>
-                                        &nbsp;Virtual Infrastrcture
+                                        &nbsp;&nbspVirtual Infrastrcture
                                     </a>
                                 </li>
                                 {% if spatial_coverage.north or spatial_coverage.northlimit or temporal_coverage or metadata_form %}
@@ -1504,12 +1510,109 @@
                 });
             }
 
+            function add_model_output_to_resource_ajax(res_id, output_path) {
+                $.ajax({
+                    type: "POST",
+                    url: '/hsapi/add_model_output_to_resource/' + res_id + output_path,
+                    success: function(data) {
+                        window.location.reload();
+                    },
+                    error: function (xhr, errmsg, err) {
+                        console.log(errmsg);
+                        alert("Add_model_output_to_resource error: " + errmsg);
+                    }
+                });
+            }
+
+            function create_resource_with_model_output(res_id, output_path) {
+                $.ajax({
+                    type: "POST",
+                    data: {
+                        output_path: output_path,
+                        abstract: 'This modflow output resource is created by modflow model run with input from '
+
+                    },
+                    url: '/hsapi/create_resource_with_model_output/'+res_id+'/',
+                    success: function(data) {
+                        window.location.href = data.url;
+                    },
+                    error: function (xhr, errmsg, err) {
+                        console.log(errmsg);
+                        alert("create_resource_with_model_output error: " + errmsg);
+                    }
+                });
+            }
+
+            function check_model_run_status(res_id) {
+                model_run_status_timeout_id=-1;
+                $.ajax({
+                    dataType: "json",
+                    cache: false,
+                    timeout: 60000,
+                    type: "POST",
+                    url: '/hsapi/check_model_run_status/' + res_id + '/',
+                    success: function(data) {
+                        console.log("Success: output_path is " + data.output_path);
+                        if(data.output_path) {
+                            if(model_run_status_timeout_id > -1)
+                                clearTimeout(model_run_status_timeout_id);
+                            console.log("Before popping up dialog ");
+                            $("#action-dialog").dialog({
+                                modal: true,
+                                resizable: false,
+                                width: 300,
+                                height: 500,
+                                buttons: [
+                                    {
+                                        id: "Cancel",
+                                        text: "Cancel",
+                                        click: function() {
+                                            $(this).dialog('close');
+                                        }
+                                    },
+                                    {
+                                        id: "Add",
+                                        text: "Add to this resource",
+                                        click: add_model_output_to_resource_ajax(res_id, data.output_path)
+                                    },
+                                    {
+                                        id: "Create",
+                                        text: "Create new resource",
+                                        click: create_resource_with_model_output(res_id, data.output_path)
+                                    }
+                                ]
+                            });
+                            console.log("After popping up dialog ");
+                        }
+                        // only check status again in 3 seconds when $("#loading") is not
+                        // cleared up by success status above
+                        else {
+                            console.log("Success, but output_path is empty, set timer");
+                            model_run_status_timeout_id = setTimeout(function () {
+                                check_model_run_status(res_id);
+                            }, 5000);
+                        }
+                    },
+                    error: function (xhr, errmsg, err) {
+                        if(model_run_status_timeout_id > -1)
+                            clearTimeout(model_run_status_timeout_id);
+                        console.log(errmsg);
+                        alert("Model run status poll errors: " + errmsg);
+                    }
+                });
+            }
+
             $(document).ready(function () {
                 google.maps.event.addDomListener(window, "load", initMap);
                 var task_id = $('#task_id').val();
                 var download_path = $('#download_path').val();
                 if (task_id)
                     update_download_status(task_id, download_path);
+                var cloud_ip_message = $('#cloud_ip_message').val();
+                if (cloud_ip_message) {
+                    var res_id = $('#res_id').val();
+                    check_model_run_status(res_id);
+                }
 
                 $("#agree-chk").on('click', function(e) {
                     e.stopImmediatePropagation();

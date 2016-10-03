@@ -24,6 +24,7 @@ from django.views.generic import TemplateView
 from django.core.urlresolvers import reverse
 
 from rest_framework.decorators import api_view
+from rest_framework.exceptions import NotFound, PermissionDenied
 
 from mezzanine.conf import settings
 from mezzanine.pages.page_processors import processor_for
@@ -434,17 +435,40 @@ def publish(request, shortkey, *args, **kwargs):
 def create_cloud_env_for_resource(request, shortkey):
     res, _, user = authorize(request, shortkey,
                              needed_permission=ACTION_TO_AUTHORIZE.EDIT_RESOURCE)
-    ret = hydroshare.create_cloud_env_for_resource(shortkey)
+    collab_id = 'HydroLab'
+
+    #istorage = IrodsStorage('federated')
+    #if res.resource_federation_path:
+    #    res_content = os.path.join(res.resource_federation_path, shortkey, 'data', 'contents')
+    #else:
+    #    res_content = os.path.join(shortkey, 'data', 'contents')
+    # istorage.copyFiles(res_content, '/hydrostitchZone/home/hydrodemo/' + shortkey)
+
+    ret = hydroshare.create_cloud_env_for_resource(shortkey, collab_id)
     if isinstance(ret, HttpResponseBadRequest):
         return ret
     request.session['cloud_ip_message'] = ret
     return HttpResponseRedirect(request.META['HTTP_REFERER'])
 
 
+def check_model_run_status(request, shortkey):
+    logger.debug('in check_model_run_status')
+    try:
+        res = hydroshare.utils.get_resource_by_shortkey(shortkey, or_404=False)
+    except ObjectDoesNotExist:
+        raise NotFound(detail="No resource was found for resource id:%s" % shortkey)
+    output_path = res.model_output_path_in_user_zone
+    if output_path:
+        # clean up the flag
+        res.model_output_path_in_user_zone = ''
+        res.save()
+    return HttpResponse(json.dumps({"output_path": output_path}),
+                        content_type="application/json")
+
+
 @csrf_exempt
-def add_model_output_to_resource(request, shortkey, output_dir_name):
+def write_model_output_path(request, shortkey, output_dir_name):
     from django.contrib.auth import authenticate, login
-    from rest_framework.exceptions import NotFound, PermissionDenied
     user = authenticate(username=request.POST['username'], password=request.POST['password'])
     login(request, user)
     logger.debug('user has logged in')
@@ -459,13 +483,30 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
     if not authorized:
         raise PermissionDenied()
     logger.debug('user is authorized')
+
+    #output_full_path = '/{zone}/home/{username}/{output}'.format(
+    #    zone=settings.HS_USER_IRODS_ZONE, username=user.username, output=output_dir_name)
+
+    #istorage = IrodsStorage()
+    #istorage.copyFiles('/hydrostitchZone/home/hydrodemo/'+output_dir_name, output_full_path)
+
+    res.model_output_path_in_user_zone = output_dir_name
+    res.save()
+
+    return HttpResponse('Model output path has been saved in HydroShare resource successfully.')
+
+
+def add_model_output_to_resource(request, shortkey, output_dir_name):
+    res, _, _ = authorize(request, shortkey,
+                               needed_permission=ACTION_TO_AUTHORIZE.EDIT_RESOURCE)
+    logger.debug('user is authorized')
     res_url = current_site_url()+"/resource/{}".format(shortkey)
     output_full_path = '/{zone}/home/{username}/{output}'.format(
-        zone=settings.HS_USER_IRODS_ZONE, username=user.username, output=output_dir_name)
+        zone=settings.HS_USER_IRODS_ZONE, username=request.user.username, output=output_dir_name)
     logger.debug('res_url='+res_url + ", output_path="+output_full_path)
     istorage = IrodsStorage('federated')
     output_file_list = istorage.listdir(output_full_path)[1]
-
+    collab_id = 'HydroLab'
     logger.debug('output_file_list:' + output_file_list[0])
     output_file_full_list = []
     for fname in output_file_list:
@@ -474,7 +515,7 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
     logger.debug("before adding file to resource")
 
     try:
-        utils.resource_file_add_pre_process(resource=res, files=[], user=user,
+        utils.resource_file_add_pre_process(resource=res, files=[], user=request.user,
                                             extract_metadata=False,
                                             fed_res_file_names=output_file_full_list)
     except hydroshare.utils.ResourceFileSizeException as ex:
@@ -486,7 +527,7 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
         return HttpResponseBadRequest(content=ex.message)
 
     try:
-        hydroshare.utils.resource_file_add_process(resource=res, files=[], user=user,
+        hydroshare.utils.resource_file_add_process(resource=res, files=[], user=request.user,
                                                    extract_metadata=False,
                                                    fed_res_file_names=output_file_full_list)
 
@@ -506,24 +547,90 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
         return HttpResponseBadRequest(content=ex.stderr)
 
     # clean up containers after files are added successfully
-    #url = "http://152.54.9.88:8080/collaboration/{collab_id}/job/<job_id>".format(collab_id=shortkey,
-    #                                                                              job_id=shortkey)
-    #response = requests.delete(url, auth=('hyi', 'hyi'))
-    #if not response.status_code == status.HTTP_200_OK and \
-    #        not response.status_code == status.HTTP_201_CREATED:
-    #    return HttpResponseBadRequest(content=response.text)
-    res_refresh_page_url = current_site_url() + \
-                           "/hsapi/refresh_resource_landing_page/{}/".format(shortkey)
-    return HttpResponseRedirect(res_refresh_page_url)
+    success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
+    if not success:
+        return HttpResponseBadRequest(content=response_text)
 
-
-def refresh_resource_landing_page(request, shortkey):
-    request.session['cloud_ip_message'] = 'Congratulations! The model run in the provisioned ' \
-                                          'virtual infrastructure has completed and the model ' \
-                                          'output files have been successfully added into ' \
-                                          'this resource.'
-    res_url = current_site_url() + "/resource/{}".format(shortkey)
     return HttpResponseRedirect(res_url)
+
+
+def create_resource_with_model_output(request, shortkey):
+    collab_id = 'HydroLab'
+    abstract = request.POST['abstract'] + '<a href="' + current_site_url() + '/resource/' \
+               + shortkey + '"this HydroShare resource</a>'
+    output_dir_name = request.POST['output_path']
+    output_full_path = '/{zone}/home/{username}/{output}'.format(
+        zone=settings.HS_USER_IRODS_ZONE, username=request.user.username, output=output_dir_name)
+    istorage = IrodsStorage('federated')
+    output_file_list = istorage.listdir(output_full_path)[1]
+
+
+    logger.debug('output_file_list:' + output_file_list[0])
+    fed_res_file_names = []
+    for fname in output_file_list:
+        fed_res_file_names.append(os.path.join(output_full_path, fname))
+
+    resource_type = 'Generic'
+    res_title = 'Modflow Output Resource'
+
+    resource_files = []
+    fed_copy_or_move = 'move'
+
+    url_key = "page_redirect_url"
+
+    try:
+        page_url_dict, res_title, metadata, fed_res_path = hydroshare.utils.resource_pre_create_actions(
+            resource_type=resource_type, files=resource_files,
+            resource_title=res_title, fed_res_file_names=fed_res_file_names,
+            page_redirect_url_key=url_key, requesting_user=request.user)
+    except utils.ResourceFileSizeException as ex:
+        context = {'file_size_error': ex.message}
+        return render_to_response('pages/create-resource.html', context,
+                                  context_instance=RequestContext(request))
+
+    except utils.ResourceFileValidationException as ex:
+        context = {'validation_error': ex.message}
+        return render_to_response('pages/create-resource.html', context,
+                                  context_instance=RequestContext(request))
+
+    except Exception as ex:
+        context = {'resource_creation_error': ex.message}
+        return render_to_response('pages/create-resource.html', context,
+                                  context_instance=RequestContext(request))
+
+    if url_key in page_url_dict:
+        return render(request, page_url_dict[url_key], {'title': res_title, 'metadata': metadata})
+
+    metadata.append({'description': {'abstract': abstract}})
+    resource = hydroshare.create_resource(
+        resource_type=resource_type,
+        owner=request.user,
+        title=res_title,
+        metadata=metadata,
+        files=resource_files,
+        fed_res_file_names=fed_res_file_names,
+        fed_res_path=fed_res_path[0] if len(fed_res_path) == 1 else '',
+        fed_copy_or_move=fed_copy_or_move,
+        content=res_title
+    )
+    # except Exception as ex:
+    #     context = {'resource_creation_error': ex.message }
+    #     return render_to_response('pages/create-resource.html', context, context_instance=RequestContext(request))
+
+    try:
+        utils.resource_post_create_actions(resource=resource, user=request.user, metadata=metadata)
+    except (utils.ResourceFileValidationException, Exception) as ex:
+        request.session['validation_error'] = ex.message
+
+    # go to resource landing page
+    request.session['just_created'] = True
+
+    # clean up containers and cloud virtual infrastructure
+    success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
+    if not success:
+        return HttpResponseBadRequest(content=response_text)
+
+    return JsonResponse({'url': resource.get_absolute_url()})
 
 
 def set_resource_flag(request, shortkey, *args, **kwargs):

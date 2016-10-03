@@ -1523,6 +1523,7 @@ class BaseResource(Page, AbstractResource):
     # zone. If a resource is stored in a fedearated zone, the field should store the
     # federated root path in the format of /federated_zone/home/localHydroProxy
     resource_federation_path = models.CharField(max_length=100, blank=True, default='')
+    model_output_path_in_user_zone = models.CharField(max_length=100, blank=True, default='')
     objects = models.Manager()
     public_resources = PublicResourceManager()
     discoverable_resources = DiscoverableResourceManager()
@@ -1549,16 +1550,24 @@ class BaseResource(Page, AbstractResource):
     def get_collaboration_json(self):
         res_full_fname = ''
         if ResourceFile.objects.filter(object_id=self.id).exists():
-            fname = ResourceFile.objects.filter(object_id=self.id)[0]
-            res_full_fname = '/{zone}/home/{uname}/{res_id}/data/contents/{fname}'.format(
-                zone=settings.IRODS_ZONE,
-                uname=settings.IRODS_USERNAME,
-                res_id=self.short_id,
-                fname=fname)
+            fnames = ResourceFile.objects.filter(object_id=self.id)
+            fname_list = []
+            for fname in fnames:
+                res_full_fname = '/{zone}/home/{uname}/{res_id}/data/contents/{fname}'.format(
+                    zone=settings.IRODS_ZONE,
+                    uname=settings.IRODS_USERNAME,
+                    res_id=self.short_id,
+                    fname=fname)
+                fname_list.append(res_full_fname)
         data = {}
-        data['containerId'] = 'mjstealey/docker-modflow'
+        data['task'] = 'modflow'
         data['bandwidth'] = 100
-        data['input'] = [res_full_fname]
+        data['input'] = fname_list
+        data['attributes'] = {"irodsUser": "hydrodemo",
+                              "irodsZone": 'hydrostitchZone',
+                              'irodsUserPassword': 'HydroDemoUser123!',
+                              'irodHome': '/hydrostitchZone/home/hydrodemo',
+                              'GUID': self.short_id}
         return json.dumps(data)
 
 

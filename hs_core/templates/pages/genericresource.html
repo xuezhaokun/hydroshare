@@ -1515,6 +1515,7 @@
                     type: "POST",
                     url: '/hsapi/add_model_output_to_resource/' + res_id + output_path,
                     success: function(data) {
+                        alert('Congratulations! The model run in the provisioned virtual infrastructure has completed and the model output files have been added into this resource. Press OK button to see the updated content files in this resource.');
                         window.location.reload();
                     },
                     error: function (xhr, errmsg, err) {
@@ -1529,15 +1530,17 @@
                     type: "POST",
                     data: {
                         output_path: output_path,
-                        abstract: 'This modflow output resource is created by modflow model run with input from '
+                        abstract: 'This modflow output resource is created by modflow model run with input from this HydroShare resource '
 
                     },
                     url: '/hsapi/create_resource_with_model_output/'+res_id+'/',
                     success: function(data) {
                         if(data.error)
                             alert("create_resource_with_model_output error: " + data.error);
-                        else if(data.url)
+                        else if(data.url) {
+                            alert('Congratulations! The model run in the provisioned virtual infrastructure has completed and a new HydroShare resource has been created with the model output. Press OK button to go to the newly created resource page.');
                             window.location.href = data.url;
+                        }
                     },
                     error: function (xhr, errmsg, err) {
                         console.log(errmsg);

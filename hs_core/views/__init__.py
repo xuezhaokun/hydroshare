@@ -38,7 +38,7 @@ from hs_core import hydroshare
 from hs_core.hydroshare.utils import get_resource_by_shortkey, resource_modified, current_site_url
 from .utils import authorize, upload_from_irods, ACTION_TO_AUTHORIZE, run_script_to_update_hyrax_input_files, \
     get_my_resources_list, send_action_to_take_email
-from hs_core.models import GenericResource, resource_processor, CoreMetaData, Relation
+from hs_core.models import GenericResource, resource_processor, CoreMetaData, ResourceFile
 from hs_core.hydroshare.resource import METADATA_STATUS_SUFFICIENT, METADATA_STATUS_INSUFFICIENT
 
 from . import resource_rest_api
@@ -489,7 +489,10 @@ def write_model_output_path(request, shortkey, output_dir_name):
 
     #istorage = IrodsStorage()
     #istorage.copyFiles('/hydrostitchZone/home/hydrodemo/'+output_dir_name, output_full_path)
-
+    if not output_dir_name.startswith('/'):
+        output_dir_name = '/' + output_dir_name
+    if not output_dir_name.endswith('/'):
+        output_dir_name = output_dir_name + '/'
     res.model_output_path_in_user_zone = output_dir_name
     res.save()
 
@@ -510,9 +513,16 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
     logger.debug('output_file_list:' + output_file_list[0])
     output_file_full_list = []
     for fname in output_file_list:
-        output_file_full_list.append(os.path.join(output_full_path, fname))
-    logger.debug('output_file_full_list:' + output_file_full_list[0])
-    logger.debug("before adding file to resource")
+        bexist = False
+        for f in ResourceFile.objects.filter(object_id=res.id):
+            logger.debug(utils.get_resource_file_name_and_extension(f)[0])
+            if fname == utils.get_resource_file_name_and_extension(f)[0]:
+                bexist = True
+                break
+        if not bexist:
+            output_file_full_list.append(os.path.join(output_full_path, fname))
+    if not output_file_full_list:
+        return HttpResponseRedirect(res_url)
 
     try:
         utils.resource_file_add_pre_process(resource=res, files=[], user=request.user,
@@ -547,9 +557,9 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
         return HttpResponseBadRequest(content=ex.stderr)
 
     # clean up containers after files are added successfully
-    success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
-    if not success:
-        return HttpResponseBadRequest(content=response_text)
+    #success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
+    #if not success:
+    #    return HttpResponseBadRequest(content=response_text)
 
     return HttpResponseRedirect(res_url)
 
@@ -558,12 +568,14 @@ def create_resource_with_model_output(request, shortkey):
     collab_id = 'HydroLab'
     abstract = request.POST['abstract'] + '<a href="' + current_site_url() + '/resource/' \
                + shortkey + '"this HydroShare resource</a>'
+    logger.debug('abstract: ' + abstract)
     output_dir_name = request.POST['output_path']
-    output_full_path = '/{zone}/home/{username}/{output}'.format(
+    logging.debug('output_path:' + output_dir_name)
+    output_full_path = '/{zone}/home/{username}{output}'.format(
         zone=settings.HS_USER_IRODS_ZONE, username=request.user.username, output=output_dir_name)
+    logging.debug('output_full_path:' + output_full_path)
     istorage = IrodsStorage('federated')
     output_file_list = istorage.listdir(output_full_path)[1]
-
 
     logger.debug('output_file_list:' + output_file_list[0])
     fed_res_file_names = []
@@ -574,7 +586,7 @@ def create_resource_with_model_output(request, shortkey):
     res_title = 'Modflow Output Resource'
 
     resource_files = []
-    fed_copy_or_move = 'move'
+    fed_copy_or_move = 'copy'
 
     url_key = "page_redirect_url"
 
@@ -626,9 +638,9 @@ def create_resource_with_model_output(request, shortkey):
     request.session['just_created'] = True
 
     # clean up containers and cloud virtual infrastructure
-    success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
-    if not success:
-        return HttpResponseBadRequest(content=response_text)
+    #success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
+    #if not success:
+    #    return HttpResponseBadRequest(content=response_text)
 
     return JsonResponse({'url': resource.get_absolute_url()})
 

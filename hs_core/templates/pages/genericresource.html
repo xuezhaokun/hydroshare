@@ -43,7 +43,7 @@
 
                 {% if cloud_ip_message %}
                     <div class="alert alert-success alert-dismissible" role="alert">
-                    <div id="action-dialog" title="Adding model output to HydroShare" style="display: none;">
+                    <div id="action-dialog" style="display: none;", align="center">
                         <p>Congratulations! The model run has completed. Do you want to add the model
                             output to this resource or create a new resource with the model output?</p>
                     </div>
@@ -1556,33 +1556,44 @@
                         if(data.output_path) {
                             if(model_run_status_timeout_id > -1)
                                 clearTimeout(model_run_status_timeout_id);
-                            console.log("Before popping up dialog ");
                             $("#action-dialog").dialog({
                                 modal: true,
+                                title: "Adding model output to HydroShare",
                                 resizable: false,
-                                width: 300,
-                                height: 500,
+                                width: 600,
+                                height: 'auto',
+                                open: function() {
+                                    var closeBtn = $('.ui-dialog-titlebar-close');
+                                    closeBtn.append('<span class="ui-button-icon-primary ui-icon ui-icon-closethick"></span>');
+                                },
+                                close: function () {
+                                    var closeBtn = $('.ui-dialog-titlebar-close');
+                                    closeBtn.html('');
+                                },
                                 buttons: [
-                                    {
-                                        id: "Cancel",
-                                        text: "Cancel",
-                                        click: function() {
-                                            $(this).dialog('close');
-                                        }
-                                    },
                                     {
                                         id: "Add",
                                         text: "Add to this resource",
-                                        click: add_model_output_to_resource_ajax(res_id, data.output_path)
+                                        click: function() {
+                                            add_model_output_to_resource_ajax(res_id, data.output_path);
+                                        }
                                     },
                                     {
                                         id: "Create",
                                         text: "Create new resource",
-                                        click: create_resource_with_model_output(res_id, data.output_path)
+                                        click: function() {
+                                            create_resource_with_model_output(res_id, data.output_path);
+                                        }
+                                    },
+                                    {
+                                        id: "Close",
+                                        text: "Close",
+                                        click: function() {
+                                            $(this).dialog('close');
+                                        }
                                     }
                                 ]
                             });
-                            console.log("After popping up dialog ");
                         }
                         // only check status again in 3 seconds when $("#loading") is not
                         // cleared up by success status above

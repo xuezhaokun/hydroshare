@@ -1534,7 +1534,10 @@
                     },
                     url: '/hsapi/create_resource_with_model_output/'+res_id+'/',
                     success: function(data) {
-                        window.location.href = data.url;
+                        if(data.error)
+                            alert("create_resource_with_model_output error: " + data.error);
+                        else if(data.url)
+                            window.location.href = data.url;
                     },
                     error: function (xhr, errmsg, err) {
                         console.log(errmsg);

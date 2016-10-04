@@ -560,12 +560,16 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
     #success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
     #if not success:
     #    return HttpResponseBadRequest(content=response_text)
-
+    request.session['cloud_ip_message'] = 'Congratulations! The model run in the provisioned ' \
+                                          'virtual infrastructure has completed and the model ' \
+                                          'output files have been successfully added into ' \
+                                          'this resource.'
     return HttpResponseRedirect(res_url)
 
 
 def create_resource_with_model_output(request, shortkey):
     collab_id = 'HydroLab'
+    old_res_url = current_site_url() + "/resource/{}".format(shortkey)
     abstract = request.POST['abstract'] + '<a href="' + current_site_url() + '/resource/' \
                + shortkey + '"this HydroShare resource</a>'
     logger.debug('abstract: ' + abstract)
@@ -582,38 +586,27 @@ def create_resource_with_model_output(request, shortkey):
     for fname in output_file_list:
         fed_res_file_names.append(os.path.join(output_full_path, fname))
 
-    resource_type = 'Generic'
+    resource_type = 'GenericResource'
     res_title = 'Modflow Output Resource'
 
     resource_files = []
     fed_copy_or_move = 'copy'
 
     url_key = "page_redirect_url"
-
+    logger.debug('Before calling precreate resource')
     try:
         page_url_dict, res_title, metadata, fed_res_path = hydroshare.utils.resource_pre_create_actions(
             resource_type=resource_type, files=resource_files,
             resource_title=res_title, fed_res_file_names=fed_res_file_names,
             page_redirect_url_key=url_key, requesting_user=request.user)
-    except utils.ResourceFileSizeException as ex:
-        context = {'file_size_error': ex.message}
-        return render_to_response('pages/create-resource.html', context,
-                                  context_instance=RequestContext(request))
-
-    except utils.ResourceFileValidationException as ex:
-        context = {'validation_error': ex.message}
-        return render_to_response('pages/create-resource.html', context,
-                                  context_instance=RequestContext(request))
-
     except Exception as ex:
-        context = {'resource_creation_error': ex.message}
-        return render_to_response('pages/create-resource.html', context,
-                                  context_instance=RequestContext(request))
+        return JsonResponse({'error': ex.message})
 
     if url_key in page_url_dict:
         return render(request, page_url_dict[url_key], {'title': res_title, 'metadata': metadata})
-
+    logger.debug('Before append metadata')
     metadata.append({'description': {'abstract': abstract}})
+    logger.debug('Before calling create resource')
     resource = hydroshare.create_resource(
         resource_type=resource_type,
         owner=request.user,
@@ -625,17 +618,11 @@ def create_resource_with_model_output(request, shortkey):
         fed_copy_or_move=fed_copy_or_move,
         content=res_title
     )
-    # except Exception as ex:
-    #     context = {'resource_creation_error': ex.message }
-    #     return render_to_response('pages/create-resource.html', context, context_instance=RequestContext(request))
-
+    logger.debug('Before calling postcreate resource')
     try:
         utils.resource_post_create_actions(resource=resource, user=request.user, metadata=metadata)
     except (utils.ResourceFileValidationException, Exception) as ex:
-        request.session['validation_error'] = ex.message
-
-    # go to resource landing page
-    request.session['just_created'] = True
+        return JsonResponse({'error': ex.message})
 
     # clean up containers and cloud virtual infrastructure
     #success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)

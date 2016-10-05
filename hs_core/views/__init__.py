@@ -460,16 +460,20 @@ def publish(request, shortkey, *args, **kwargs):
 def create_cloud_env_for_resource(request, shortkey):
     res, _, user = authorize(request, shortkey,
                              needed_permission=ACTION_TO_AUTHORIZE.EDIT_RESOURCE)
-    collab_id = 'HydroLab'
+    collab_id = 'hydrocolab'
 
-    #istorage = IrodsStorage('federated')
-    #if res.resource_federation_path:
-    #    res_content = os.path.join(res.resource_federation_path, shortkey, 'data', 'contents')
-    #else:
-    #    res_content = os.path.join(shortkey, 'data', 'contents')
-    # istorage.copyFiles(res_content, '/hydrostitchZone/home/hydrodemo/' + shortkey)
+    istorage = IrodsStorage('federated')
+    if res.resource_federation_path:
+        res_content = os.path.join(res.resource_federation_path, shortkey, 'data', 'contents')
+    else:
+        res_content = os.path.join(shortkey, 'data', 'contents')
+    istorage.copyFiles(res_content, '/hydrostitchZone/home/hydrodemo/' + shortkey)
+    logger.debug("resource " + shortkey + " has been copied to hydrostitchZone")
 
     ret = hydroshare.create_cloud_env_for_resource(shortkey, collab_id)
+
+    logger.debug("Cloud VM has been created successfully by RADII")
+
     if isinstance(ret, HttpResponseBadRequest):
         return ret
     request.session['cloud_ip_message'] = ret
@@ -495,7 +499,7 @@ def write_model_output_path(request, shortkey, output_dir_name):
     from django.contrib.auth import authenticate, login
     user = authenticate(username=request.POST['username'], password=request.POST['password'])
     login(request, user)
-
+    logger.debug("in write_model_output_path: user has logged in")
     try:
         res = hydroshare.utils.get_resource_by_shortkey(shortkey, or_404=False)
     except ObjectDoesNotExist:
@@ -505,12 +509,13 @@ def write_model_output_path(request, shortkey, output_dir_name):
 
     if not authorized:
         raise PermissionDenied()
+    logger.debug("in write_model_output_path: user has been authorized")
+    output_full_path = '/{zone}/home/{username}/{output}'.format(
+        zone=settings.HS_USER_IRODS_ZONE, username=user.username, output=output_dir_name)
 
-    #output_full_path = '/{zone}/home/{username}/{output}'.format(
-    #    zone=settings.HS_USER_IRODS_ZONE, username=user.username, output=output_dir_name)
-
-    #istorage = IrodsStorage()
-    #istorage.copyFiles('/hydrostitchZone/home/hydrodemo/'+output_dir_name, output_full_path)
+    istorage = IrodsStorage('federated')
+    istorage.copyFiles('/hydrostitchZone/home/hydrodemo/'+output_dir_name, output_full_path)
+    logger.debug("model output has been copied to HS user zone")
     if not output_dir_name.startswith('/'):
         output_dir_name = '/' + output_dir_name
     if not output_dir_name.endswith('/'):
@@ -529,7 +534,7 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
         zone=settings.HS_USER_IRODS_ZONE, username=request.user.username, output=output_dir_name)
     istorage = IrodsStorage('federated')
     output_file_list = istorage.listdir(output_full_path)[1]
-    collab_id = 'HydroLab'
+    collab_id = 'hydrocolab'
     output_file_full_list = []
     for fname in output_file_list:
         bexist = False
@@ -575,14 +580,14 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
         return HttpResponseBadRequest(content=ex.stderr)
 
     # clean up containers after files are added successfully
-    #success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
-    #if not success:
-    #    return HttpResponseBadRequest(content=response_text)
+    success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
+    if not success:
+        return HttpResponseBadRequest(content=response_text)
     return HttpResponseRedirect(res_url)
 
 
 def create_resource_with_model_output(request, shortkey):
-    collab_id = 'HydroLab'
+    collab_id = 'hydrocolab'
     abstract = request.POST['abstract'] + current_site_url() + '/resource/' + shortkey
     output_dir_name = request.POST['output_path']
     logging.debug('output_path:' + output_dir_name)
@@ -632,9 +637,9 @@ def create_resource_with_model_output(request, shortkey):
         return JsonResponse({'error': ex.message})
 
     # clean up containers and cloud virtual infrastructure
-    #success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
-    #if not success:
-    #    return HttpResponseBadRequest(content=response_text)
+    success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
+    if not success:
+        return HttpResponseBadRequest(content=response_text)
 
     return JsonResponse({'url': resource.get_absolute_url()})
 

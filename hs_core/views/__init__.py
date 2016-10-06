@@ -462,12 +462,13 @@ def create_cloud_env_for_resource(request, shortkey):
                              needed_permission=ACTION_TO_AUTHORIZE.EDIT_RESOURCE)
     collab_id = 'hydrocolab'
 
-    istorage = IrodsStorage('federated')
+    istorage = IrodsStorage()
+    istorage.set_user_session(username='hydrodemo', password='HydroDemoUser123!', host='hydrostitch.renci.org', port='1247', def_res='sl', zone='hydrostitchZone', sess_id='hydrodemo_session')
     if res.resource_federation_path:
         res_content = os.path.join(res.resource_federation_path, shortkey, 'data', 'contents')
     else:
         res_content = os.path.join(shortkey, 'data', 'contents')
-    istorage.copyFiles(res_content, '/hydrostitchZone/home/hydrodemo/' + shortkey)
+    istorage.copyFiles('/hydrotestZone/home/devHydroProxy/' + res_content, '/hydrostitchZone/home/hydrodemo/' + shortkey)
     logger.debug("resource " + shortkey + " has been copied to hydrostitchZone")
 
     ret = hydroshare.create_cloud_env_for_resource(shortkey, collab_id)
@@ -523,6 +524,8 @@ def write_model_output_path(request, shortkey, output_dir_name):
     res.model_output_path_in_user_zone = output_dir_name
     res.save()
 
+    # clean up containers and cloud virtual infrastructure
+    success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
     return HttpResponse('Model output path has been saved in HydroShare resource successfully.')
 
 
@@ -579,10 +582,10 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
         logger.debug(ex.stderr)
         return HttpResponseBadRequest(content=ex.stderr)
 
-    # clean up containers after files are added successfully
-    success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
-    if not success:
-        return HttpResponseBadRequest(content=response_text)
+    # delete model output from hydroshareuserZone, otherwise, rerun cannot override files
+    # for some reason
+    istorage = IrodsStorage('federated')
+    istorage.delete(output_full_path)
     return HttpResponseRedirect(res_url)
 
 
@@ -636,11 +639,10 @@ def create_resource_with_model_output(request, shortkey):
     except (utils.ResourceFileValidationException, Exception) as ex:
         return JsonResponse({'error': ex.message})
 
-    # clean up containers and cloud virtual infrastructure
-    success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
-    if not success:
-        return HttpResponseBadRequest(content=response_text)
-
+    # delete model output from hydroshareuserZone, otherwise, rerun cannot override files
+    # for some reason
+    istorage = IrodsStorage('federated')
+    istorage.delete(output_full_path)
     return JsonResponse({'url': resource.get_absolute_url()})
 
 

@@ -1579,17 +1579,12 @@ class BaseResource(Page, AbstractResource):
 
     # create collaboration JSON object for using RADII to provision a cloud environment for the resource
     def get_collaboration_json(self):
-        res_full_fname = ''
         if ResourceFile.objects.filter(object_id=self.id).exists():
-            fnames = ResourceFile.objects.filter(object_id=self.id)
             fname_list = []
-            for fname in fnames:
-                res_full_fname = '/{zone}/home/{uname}/{res_id}/data/contents/{fname}'.format(
-                    zone=settings.IRODS_ZONE,
-                    uname=settings.IRODS_USERNAME,
-                    res_id=self.short_id,
-                    fname=fname)
-                fname_list.append(res_full_fname)
+            for f in ResourceFile.objects.filter(object_id=self.id):
+                if f.resource_file:
+                    fname_list.append(os.path.basename(f.resource_file.name))
+
         data = {}
         data['task'] = 'modflow'
         data['bandwidth'] = 100

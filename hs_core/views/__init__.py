@@ -515,7 +515,8 @@ def write_model_output_path(request, shortkey, output_dir_name):
         zone=settings.HS_USER_IRODS_ZONE, username=user.username, output=output_dir_name)
 
     istorage = IrodsStorage('federated')
-    istorage.copyFiles('/hydrostitchZone/home/hydrodemo/'+output_dir_name, output_full_path)
+    hydrostitch_output_full_path = '/hydrostitchZone/home/hydrodemo/'+output_dir_name
+    istorage.copyFiles(hydrostitch_output_full_path, output_full_path)
     logger.debug("model output has been copied to HS user zone")
     if not output_dir_name.startswith('/'):
         output_dir_name = '/' + output_dir_name
@@ -525,7 +526,15 @@ def write_model_output_path(request, shortkey, output_dir_name):
     res.save()
 
     # clean up containers and cloud virtual infrastructure
+    collab_id = 'hydrocolab'
     success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
+    # clean up staging irods collections in hydrostitchZone
+    istorage = IrodsStorage()
+    istorage.set_user_session(username='hydrodemo', password='HydroDemoUser123!',
+                              host='hydrostitch.renci.org', port='1247', def_res='sl',
+                              zone='hydrostitchZone', sess_id='hydrodemo_session')
+    istorage.delete(hydrostitch_output_full_path)
+    istorage.delete('/hydrostitchZone/home/hydrodemo/' + shortkey)
     return HttpResponse('Model output path has been saved in HydroShare resource successfully.')
 
 
@@ -537,7 +546,6 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
         zone=settings.HS_USER_IRODS_ZONE, username=request.user.username, output=output_dir_name)
     istorage = IrodsStorage('federated')
     output_file_list = istorage.listdir(output_full_path)[1]
-    collab_id = 'hydrocolab'
     output_file_full_list = []
     for fname in output_file_list:
         bexist = False

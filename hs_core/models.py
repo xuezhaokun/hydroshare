@@ -1555,6 +1555,7 @@ class BaseResource(Page, AbstractResource):
     # federated root path in the format of /federated_zone/home/localHydroProxy
     resource_federation_path = models.CharField(max_length=100, blank=True, default='')
     model_output_path_in_user_zone = models.CharField(max_length=100, blank=True, default='')
+    collab_id = models.CharField(max_length=50, blank=True, default='')
     objects = models.Manager()
     public_resources = PublicResourceManager()
     discoverable_resources = DiscoverableResourceManager()

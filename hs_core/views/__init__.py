@@ -460,8 +460,10 @@ def publish(request, shortkey, *args, **kwargs):
 def create_cloud_env_for_resource(request, shortkey):
     res, _, user = authorize(request, shortkey,
                              needed_permission=ACTION_TO_AUTHORIZE.EDIT_RESOURCE)
-    collab_id = 'hydrocolab'
-
+    collab_id = request.POST.get('id_collab', 'hydrocolab')
+    res.collab_id = collab_id
+    res.save()
+    logger.debug("collab_id from request.post is " + collab_id)
     istorage = IrodsStorage()
     istorage.set_user_session(username='hydrodemo', password='HydroDemoUser123!', host='hydrostitch.renci.org', port='1247', def_res='sl', zone='hydrostitchZone', sess_id='hydrodemo_session')
     if res.resource_federation_path:
@@ -526,7 +528,8 @@ def write_model_output_path(request, shortkey, output_dir_name):
     res.save()
 
     # clean up containers and cloud virtual infrastructure
-    collab_id = 'hydrocolab'
+    collab_id = res.collab_id
+    logger.debug("collab_id from request.post in model output is " + collab_id)
     success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
     # clean up staging irods collections in hydrostitchZone
     istorage = IrodsStorage()
@@ -598,7 +601,6 @@ def add_model_output_to_resource(request, shortkey, output_dir_name):
 
 
 def create_resource_with_model_output(request, shortkey):
-    collab_id = 'hydrocolab'
     abstract = request.POST['abstract'] + current_site_url() + '/resource/' + shortkey
     output_dir_name = request.POST['output_path']
     logging.debug('output_path:' + output_dir_name)

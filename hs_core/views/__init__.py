@@ -463,14 +463,18 @@ def create_cloud_env_for_resource(request, shortkey):
     collab_id = request.POST.get('id_collab', 'hydrocolab')
     res.collab_id = collab_id
     res.save()
+    def_res = 'sl' if collab_id == 'hydrocolab' else 'slRepo'
     logger.debug("collab_id from request.post is " + collab_id)
     istorage = IrodsStorage()
-    istorage.set_user_session(username='hydrodemo', password='HydroDemoUser123!', host='hydrostitch.renci.org', port='1247', def_res='sl', zone='hydrostitchZone', sess_id='hydrodemo_session')
+    istorage.set_user_session(username='hydrodemo', password='HydroDemoUser123!',
+                              host='hydrostitch.renci.org', port='1247', def_res=def_res,
+                              zone='hydrostitchZone', sess_id='hydrodemo_session')
     if res.resource_federation_path:
         res_content = os.path.join(res.resource_federation_path, shortkey, 'data', 'contents')
     else:
         res_content = os.path.join(shortkey, 'data', 'contents')
-    istorage.copyFiles('/hydrotestZone/home/devHydroProxy/' + res_content, '/hydrostitchZone/home/hydrodemo/' + shortkey)
+    istorage.copyFiles('/hydrotestZone/home/devHydroProxy/' + res_content,
+                       '/hydrostitchZone/home/hydrodemo/' + shortkey)
     logger.debug("resource " + shortkey + " has been copied to hydrostitchZone")
 
     ret = hydroshare.create_cloud_env_for_resource(shortkey, collab_id)
@@ -530,11 +534,12 @@ def write_model_output_path(request, shortkey, output_dir_name):
     # clean up containers and cloud virtual infrastructure
     collab_id = res.collab_id
     logger.debug("collab_id from request.post in model output is " + collab_id)
+    def_res = 'sl' if collab_id == 'hydrocolab' else 'slRepo'
     success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
     # clean up staging irods collections in hydrostitchZone
     istorage = IrodsStorage()
     istorage.set_user_session(username='hydrodemo', password='HydroDemoUser123!',
-                              host='hydrostitch.renci.org', port='1247', def_res='sl',
+                              host='hydrostitch.renci.org', port='1247', def_res=def_res,
                               zone='hydrostitchZone', sess_id='hydrodemo_session')
     istorage.delete(hydrostitch_output_full_path)
     istorage.delete('/hydrostitchZone/home/hydrodemo/' + shortkey)

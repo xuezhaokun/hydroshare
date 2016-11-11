@@ -1211,7 +1211,7 @@ def delete_cloud_env(jid, collab_id):
     """
     url = "http://152.54.9.88:9090/collaboration/{collab_id}/job/{job_id}".format(
             collab_id=collab_id, job_id=jid)
-    response = requests.delete(url, auth=('hyi', 'hyi'))
+    response = requests.delete(url, auth=('rayi', 'rayi-radii16'))
 
     if not response.status_code == status.HTTP_200_OK:
         return False, response.text
@@ -1226,13 +1226,13 @@ def create_cloud_env_for_resource(pk, collab_id):
         collab_id=collab_id, job_id=pk)
     # exceptions will be raised if PUT request fails
     response = requests.put(url, headers={'content-type': 'application/json'},
-                            data=collab_json, auth=('hyi', 'hyi'))
+                            data=collab_json, auth=('rayi', 'rayi-radii16'))
 
     if response.status_code == status.HTTP_409_CONFLICT:
         # collaboration id already exists, delete it first, then put again
-        response = requests.delete(url, auth=('hyi', 'hyi'))
+        response = requests.delete(url, auth=('rayi', 'rayi-radii16'))
         response = requests.put(url, headers={'content-type': 'application/json'},
-                            data=collab_json, auth=('hyi', 'hyi'))
+                            data=collab_json, auth=('rayi', 'rayi-radii16'))
 
     if not response.status_code == status.HTTP_200_OK and \
             not response.status_code == status.HTTP_201_CREATED:

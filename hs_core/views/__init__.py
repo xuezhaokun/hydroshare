@@ -463,12 +463,12 @@ def create_cloud_env_for_resource(request, shortkey):
     collab_id = request.POST.get('id_collab', 'hydrocolab')
     res.collab_id = collab_id
     res.save()
-    def_res = 'sl' if collab_id == 'hydrocolab' else 'slRepo'
+    def_res = 'sl' if collab_id == 'hydrocolab' else 'umassRepo'
     logger.debug("collab_id from request.post is " + collab_id + ", default res is " + def_res)
     istorage = IrodsStorage()
     istorage.set_user_session(username='hydrodemo', password='HydroDemoUser123!',
                               host='hydrostitch.renci.org', port='1247', def_res=def_res,
-                              zone='hydrostitchZone', sess_id='hydrodemo_session' + collab_id)
+                              zone='hydrostitchZone', sess_id='hydrodemo_session_' + def_res)
     if res.resource_federation_path:
         res_content = os.path.join(res.resource_federation_path, shortkey, 'data', 'contents')
     else:
@@ -533,14 +533,14 @@ def write_model_output_path(request, shortkey, output_dir_name):
 
     # clean up containers and cloud virtual infrastructure
     collab_id = res.collab_id
-    def_res = 'sl' if collab_id == 'hydrocolab' else 'slRepo'
+    def_res = 'sl' if collab_id == 'hydrocolab' else 'umassRepo'
     logger.debug("collab_id from request.post in model output is " + collab_id + ', def_res is ' + def_res)
     success, response_text = hydroshare.delete_cloud_env(shortkey, collab_id)
     # clean up staging irods collections in hydrostitchZone
     istorage = IrodsStorage()
     istorage.set_user_session(username='hydrodemo', password='HydroDemoUser123!',
                               host='hydrostitch.renci.org', port='1247', def_res=def_res,
-                              zone='hydrostitchZone', sess_id='hydrodemo_session' + collab_id)
+                              zone='hydrostitchZone', sess_id='hydrodemo_session_' + def_res)
     istorage.delete(hydrostitch_output_full_path)
     istorage.delete('/hydrostitchZone/home/hydrodemo/' + shortkey)
     return HttpResponse('Model output path has been saved in HydroShare resource successfully.')

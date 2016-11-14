@@ -468,7 +468,7 @@ def create_cloud_env_for_resource(request, shortkey):
     istorage = IrodsStorage()
     istorage.set_user_session(username='hydrodemo', password='HydroDemoUser123!',
                               host='hydrostitch.renci.org', port='1247', def_res=def_res,
-                              zone='hydrostitchZone', sess_id='hydrodemo_session')
+                              zone='hydrostitchZone', sess_id='hydrodemo_session' + collab_id)
     if res.resource_federation_path:
         res_content = os.path.join(res.resource_federation_path, shortkey, 'data', 'contents')
     else:
@@ -540,7 +540,7 @@ def write_model_output_path(request, shortkey, output_dir_name):
     istorage = IrodsStorage()
     istorage.set_user_session(username='hydrodemo', password='HydroDemoUser123!',
                               host='hydrostitch.renci.org', port='1247', def_res=def_res,
-                              zone='hydrostitchZone', sess_id='hydrodemo_session')
+                              zone='hydrostitchZone', sess_id='hydrodemo_session' + collab_id)
     istorage.delete(hydrostitch_output_full_path)
     istorage.delete('/hydrostitchZone/home/hydrodemo/' + shortkey)
     return HttpResponse('Model output path has been saved in HydroShare resource successfully.')

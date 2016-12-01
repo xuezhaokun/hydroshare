@@ -55,20 +55,20 @@ def landing_page(request, page):
                                 '{% crispy workflow_input_form %} '
                                 '</div>'),
 
-                           HTML('<div class="form-group" id="workflowprocessors"> '
-                                '{% load crispy_forms_tags %} '
-                                '{% crispy workflow_processors_form %} '
-                                '</div></div> '),
-
-                           HTML('<div class="col-xs-12 col-sm-6"><div class="form-group" id="workflowoutput"> '
+                           HTML('<div class="form-group" id="workflowoutput"> '
                                 '{% load crispy_forms_tags %} '
                                 '{% crispy workflow_output_form %} '
-                                '</div> '),
+                                '</div></div> '),
 
-                           HTML('<div class="form-group" id="irodsworkflowprocessors"> '
+                           HTML('<div class="col-xs-12 col-sm-6"><div class="form-group" id="workflowprocessors"> '
                                 '{% load crispy_forms_tags %} '
-                                '{% crispy irods_workflow_processors_form %} '
-                                '</div></div></div>'),
+                                '{% crispy workflow_processors_form %} '
+                                '</div></div></div> '),
+
+                           # HTML('<div class="form-group" id="irodsworkflowprocessors"> '
+                           #      '{% load crispy_forms_tags %} '
+                           #      '{% crispy irods_workflow_processors_form %} '
+                           #      '</div></div></div>'),
         )
 
 

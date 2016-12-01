@@ -91,23 +91,23 @@ class DFCWorkflowResource(BaseResource):
         md = DFCWorkflowMetaData()
         return self._get_metadata(md)
 
-    def has_required_content_files(self):
-        mss_file_exists = False
-        mpf_file_exists = False
-        if len(self.get_supported_upload_file_types()) > 0:
-            if self.files.all().count() >= 2:
-                for res_file in self.files.all():
-                     ext = os.path.splitext(res_file.resource_file.name)[-1]
-                     if ext == '.mss':
-                         mss_file_exists = True
-                     elif ext == '.mpf':
-                         mpf_file_exists = True
-
-                return mss_file_exists and mpf_file_exists
-            else:
-                return False
-        else:
-            return True
+    # def has_required_content_files(self):
+    #     mss_file_exists = False
+    #     mpf_file_exists = False
+    #     if len(self.get_supported_upload_file_types()) > 0:
+    #         if self.files.all().count() >= 2:
+    #             for res_file in self.files.all():
+    #                  ext = os.path.splitext(res_file.resource_file.name)[-1]
+    #                  if ext == '.mss':
+    #                      mss_file_exists = True
+    #                  elif ext == '.mpf':
+    #                      mpf_file_exists = True
+    #
+    #             return mss_file_exists and mpf_file_exists
+    #         else:
+    #             return False
+    #     else:
+    #         return True
 
 processor_for(DFCWorkflowResource)(resource_processor)
 

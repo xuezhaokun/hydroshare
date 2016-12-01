@@ -47,11 +47,11 @@
                         {% endif %}
                     </ul>
                 {%  endif %}
-                {% if cm.resource_type == "DFCWorkflowResource" %}
-                    {% if not cm.has_required_content_files %}
-                        <br>
-                        <span>Workflow file (.mss) and Parameter file (.mpf) are required to publish the resource or make the resource public or discoverable.</span>
-                    {% endif %}
+{#                {% if cm.resource_type == "DFCWorkflowResource" %}#}
+{#                    {% if not cm.has_required_content_files %}#}
+{#                        <br>#}
+{#                        <span>Workflow file (.mss) and Parameter file (.mpf) are required to publish the resource or make the resource public or discoverable.</span>#}
+{#                    {% endif %}#}
                 {% if cm.resource_type == "MODFLOWModelInstanceResource" %}
                     {% if cm.check_content_files %}
                         {% if cm.check_content_files == 'multiple_nam' %}
@@ -89,7 +89,7 @@
         </div>
     {% endif %}
     {% endif %}
-{% endif %}
+{#{% endif %}#}
 
 {# ======= Title ======= #}
 <div class="col-sm-12">

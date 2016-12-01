@@ -16,7 +16,11 @@
                 <span>{{ u|contact|safe }}</span>
             {% endfor %}
         </td></tr>
-        <tr><th>Resource type:</th><td>{{ cm|resource_type }}</td></tr>
+        {% if cm.resource_type  == "DFCWorkflowResource" %}
+            <tr><th>Resource type:</th><td>Geopackage Workflow</td></tr>
+        {% else %}
+            <tr><th>Resource type:</th><td>{{ cm|resource_type }}</td></tr>
+        {% endif %}
         <tr><th>Created:</th><td>{{ cm.created }}</td></tr>
         <tr><th>Last updated:</th><td> {{ cm.updated }} by {% if cm.last_changed_by %}{{ cm.last_changed_by|contact|safe }}{% endif %}</td></tr>
     </table>
@@ -45,7 +49,11 @@
                     <span>{{ u|contact|safe }}</span>
                 {% endfor %}
             </td></tr>
-            <tr><th>Resource type:</th><td>{{ cm|resource_type }}</td></tr>
+            {% if cm.resource_type  == "DFCWorkflowResource" %}
+                <tr><th>Resource type:</th><td>Geopackage Workflow</td></tr>
+             {% else %}
+                <tr><th>Resource type:</th><td>{{ cm|resource_type }}</td></tr>
+            {% endif %}
             <tr><th>Created:</th><td>{{ cm.created }}</td></tr>
             <tr><th>Last updated:</th><td> {{ cm.updated }} by {% if cm.last_changed_by %}{{ cm.last_changed_by|contact|safe }}{% endif %}</td></tr>
         </table>

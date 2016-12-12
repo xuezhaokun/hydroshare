@@ -100,10 +100,63 @@
 
 {% block extra_section %}
     <div class="row">
-        {% if page.perms.change and metadata_form %}
-            <div class="col-sm-4">
-                <a id="execute_wso" class="btn btn-success" href="/_internal/{{ cm.short_id }}/execute_wso/">Execute</a>
+            <div class="col-sm-6">
+                <label for="appid">App Id</label>
+                <input class="form-control input-sm textinput textInput" type="text" id="appid" name="appid" value="7d7e10a6-bd84-11e6-bbcf-005056a2d298">
+                <br>
+                <label for="name">Name</label>
+                <input class="form-control input-sm textinput textInput" type="text" id="name" name="name" value="Launched from Hydroshare">
+                <br>
+                <label for="inputFolder">Input Folder</label>
+                <input class="form-control input-sm textinput textInput" type="text" id="inputFolder" name="inputFolder" value="/dfc1/home/testde2/hydro">
+                <br>
+                <label for="outputFolder">Output Folder</label>
+                <input class="form-control input-sm textinput textInput" type="text" id="outputFolder" name="outputFolder" value="/dfc1/home/testde2/analyses">
+                <br>
+
+                <input type="submit" value="Execute" class="btn btn-success" onclick="postData()">
             </div>
-        {% endif %}
+{#        {% if page.perms.change and metadata_form %}#}
+{#            <div class="col-sm-4">#}
+{#                <a id="execute_wso" class="btn btn-success" href="/_internal/{{ cm.short_id }}/execute_wso/">Execute</a>#}
+{#            </div>#}
+{#        {% endif %}#}
     </div>
+    <script type="text/javascript">
+function postData()
+{
+  alert("postdata()");
+  var appId = document.getElementById('appid').value;
+  var name = document.getElementById('name').value;
+  var inputFolder = document.getElementById('inputFolder').value;
+  var outputFolder = document.getElementById('outputFolder').value;
+
+
+  var appReq = {};
+  appReq.app_id = appId;
+  appReq.config = {};
+  appReq.config["7d7e55ac-bd84-11e6-bbcf-005056a2d298_7d7f059c-bd84-11e6-bbcf-005056a2d298"] = inputFolder;
+  appReq.name = name;
+  appReq.output_dir = outputFolder;
+  appReq.createOutputSubdir = true;
+  appReq.archive_logs = true;
+  appReq.notify = true;
+  appReq.debug = true;
+//construct an HTTP request
+  var xhr = new XMLHttpRequest();
+  var full = "http://dfc-de-svcs.edc.renci.org:8080";
+  console.log(full);
+
+  xhr.open("POST", full + "/dfc-rest/rest/analysisGateway/" + appId, true);
+  xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+  console.log("{ analysisRequest:" + JSON.stringify(appReq) + "}");
+  // send the collected data as JSON
+  xhr.send("{ analysisRequest:" + JSON.stringify(appReq) + "}");
+  xhr.onloadend = function () {
+    alert("posted!  Check DE for status");
+  };
+
+
+}
+</script>
 {% endblock %}

@@ -466,6 +466,13 @@ REST_FRAMEWORK = {
     ),
 }
 
+ADMIN_MENU_ORDER = (
+    ("Content", ("pages.RichTextPage", "blog.BlogPost", "blog.Comment")),
+    ("Resources", ("hs_core.GenericResource", "hs_geo_raster_resource.RasterResource")),
+    ("Site", ("auth.User", "auth.Group", "sites.Site", "redirects.Redirect")),
+)
+
+
 SOLR_HOST = os.environ.get('SOLR_PORT_8983_TCP_ADDR', 'localhost')
 SOLR_PORT = '8983'
 HAYSTACK_CONNECTIONS = {

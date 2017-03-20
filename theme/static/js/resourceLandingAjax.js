@@ -618,6 +618,19 @@ function get_file_type_metadata_ajax_submit(url) {
     });
 }
 
+function view_html_file_ajax_submit(url) {
+    return $.ajax({
+        type: "POST",
+        url: url,
+        dataType: 'html',
+        async: false,
+        success: function (result) {
+        },
+        error: function (XMLHttpRequest, textStatus, errorThrown) {
+        }
+    });
+}
+
 function filetype_keywords_update_ajax_submit() {
     $form = $('#id-keywords-filetype');
     var datastring = $form.serialize();

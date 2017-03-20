@@ -1378,6 +1378,30 @@ def get_user_or_group_data(request, user_or_group_id, is_group, *args, **kwargs)
     return JsonResponse(user_data)
 
 
+def view_html_file(request, resource_id, file_id, *args, **kwargs):
+    res, authorized, _ = authorize(request, resource_id,
+                                   needed_permission=ACTION_TO_AUTHORIZE.VIEW_RESOURCE,
+                                   raises_exception=False)
+    response_data = {'status': 'error'}
+    if not authorized:
+        err_msg = "Permission denied"
+        response_data['message'] = err_msg
+        return JsonResponse(response_data, status=200)
+
+    matching_file = None
+    for f in res.files.all():
+        if f.id == int(file_id) and f.extension.lower() == '.html':
+            matching_file = f
+            break
+    if matching_file is None:
+        err_msg = "File was not found or the file is not a html file"
+        response_data['message'] = err_msg
+        return JsonResponse(response_data, status=200)
+
+    response_data['status'] = 'success'
+    response_data['html'] = matching_file.resource_file.read()
+    return JsonResponse(response_data, status=200)
+
 def _send_email_on_group_membership_acceptance(membership_request):
     """
     Sends email notification of group membership acceptance

@@ -177,4 +177,6 @@ urlpatterns = patterns('',
         views.resource_folder_hierarchy.data_store_file_or_folder_move_or_rename),
     url(r'^_internal/data-store-delete-folder/$',
         views.resource_folder_hierarchy.data_store_remove_folder),
+    url(r'^_internal/(?P<resource_id>[0-9a-f-]+)/(?P<file_id>[0-9]+)/view-html-file/$',
+        views.view_html_file, name='view_html_file'),
 )

@@ -115,6 +115,7 @@ function updateSelectionMenuContext() {
     var flagDisableSetNetCDFFileType = false;
     var flagDisableGetLink = false;
     var flagDisableCreateFolder = false;
+    var flagDisableHtmlShow = false;
 
     var maxSize = MAX_FILE_SIZE * 1024 * 1024; // convert MB to Bytes
 
@@ -186,6 +187,10 @@ function updateSelectionMenuContext() {
             flagDisableSetNetCDFFileType = true;
         }
 
+        if (fileExt.toUpperCase() != "HTML"  || fileExt.toUpperCase() != "HTM") {
+            flagDisableHtmlShow = true;
+        }
+
         if(logicalFileType === "GeoRasterLogicalFile" || logicalFileType === "NetCDFLogicalFile"){
             flagDisableDelete = true;
             flagDisableRename = true;
@@ -226,6 +231,10 @@ function updateSelectionMenuContext() {
     // set NetCDF file type
     menu.children("li[data-menu-name='setnetcdffiletype']").toggleClass("disabled", flagDisableSetNetCDFFileType);
     $("#fb-set-netcdf-file-type").toggleClass("disabled", flagDisableSetNetCDFFileType);
+
+     // set Show HTML file
+    menu.children("li[data-menu-name='viewwhtmlfile']").toggleClass("disabled", flagDisableHtmlShow);
+    $("#fb-view-html-file").toggleClass("disabled", flagDisableHtmlShow);
 
     // Rename
     menu.children("li[data-menu-name='rename']").toggleClass("disabled", flagDisableRename);
@@ -1241,6 +1250,11 @@ $(document).ready(function () {
          setFileType("NetCDF");
      });
 
+    // set view html file method
+     $("#btn-view-html-file").click(function () {
+         viewHtmlFile();
+     });
+
     // show file type metadata
     $("#btn-show-file-metadata").click(function () {
          var logical_file_id = $("#fb-files-container li.ui-selected").attr("data-logical-file-id");
@@ -1351,6 +1365,25 @@ function setFileType(fileType){
     $.when.apply($, calls).done(function () {
        refreshFileBrowser();
        $("#fileTypeMetaDataTab").html(file_metadata_alert);
+    });
+}
+
+// used for viewing html file
+function viewHtmlFile(){
+    var file_id = $("#fb-files-container li.ui-selected").attr("data-pk");
+    var resID = $("#hs-file-browser").attr("data-res-id");
+    var url = "/hsapi/_internal/" + resID + "/" + file_id + "/view-html-file/";
+    // $(".file-browser-container, #fb-files-container").css("cursor", "progress");
+    var calls = [];
+    calls.push(view_html_file_ajax_submit(url));
+    // Wait for the asynchronous calls to finish to get new folder structure
+    $.when.apply($, calls).done(function (result) {
+        var json_response = JSON.parse(result);
+        if(json_response.status === "success"){
+            var w = window.open();
+            w.document.write(json_response.html)
+        }
+
     });
 }
 // Used to set the previous scroll position after refresh

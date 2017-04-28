@@ -470,10 +470,20 @@ def update_metadata_element(request, shortkey, element_name, element_id, *args, 
 def file_download_url_mapper(request, shortkey):
     """ maps the file URIs in resourcemap document to django_irods download view function"""
 
-    resource, _, _ = authorize(request, shortkey, needed_permission=ACTION_TO_AUTHORIZE.VIEW_RESOURCE)
+    resource, _, _ = authorize(request, shortkey, 
+                               needed_permission=ACTION_TO_AUTHORIZE.VIEW_RESOURCE)
     istorage = resource.get_irods_storage()
-    irods_file_path = '/'.join(request.path.split('/')[2:-1])
-    file_download_url = istorage.url(irods_file_path)
+    # Strip trailing '/' if it is there. 
+    # Remove first two components of path (remainder starts with resourceid) 
+    # TODO: is / necessary here? 
+    irods_file_path = '/'.join(request.path.rstrip('/').split('/')[2:-1])
+    print('request_path={}, irods_file_path={}'.format(request.path,irods_file_path))
+    if not resource.is_federated:  # relative to resource id
+        file_download_url = istorage.url(irods_file_path)
+    else:  # relative to complete iRODs path to federated resource 
+        file_download_url = istorage.url(resource.resource_federation_path + 
+                                         irods_file_path) 
+    print('request_path={}, download_url={}'.format(request.path, file_download_url))
     return HttpResponseRedirect(file_download_url)
 
 

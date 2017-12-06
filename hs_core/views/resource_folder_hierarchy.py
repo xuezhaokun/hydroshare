@@ -70,53 +70,52 @@ def data_store_structure(request):
     istorage = resource.get_irods_storage()
     res_coll = os.path.join(resource.root_path, store_path)
     try:
+        # this lists the given directory
         store = istorage.listdir(res_coll)
-        files = []
-        for fname in store[1]:  # files
-            fname = fname.decode('utf-8')
-            name_with_full_path = os.path.join(res_coll, fname)
-            size = istorage.size(name_with_full_path)
-            mtype = get_file_mime_type(fname)
-            idx = mtype.find('/')
-            if idx >= 0:
-                mtype = mtype[idx + 1:]
-            f_pk = ''
-            f_url = ''
-            logical_file_type = ''
-            logical_file_id = ''
-            for f in ResourceFile.objects.filter(object_id=resource.id):
-                if name_with_full_path == f.storage_path:
-                    f_pk = f.pk
-                    f_url = get_resource_file_url(f)
-                    if resource.resource_type == "CompositeResource":
-                        f_logical = f.get_or_create_logical_file
-                        logical_file_type = f.logical_file_type_name
-                        logical_file_id = f_logical.id
-                    break
-
-            if f_pk:  # file is found in Django
-                files.append({'name': fname, 'size': size, 'type': mtype, 'pk': f_pk, 'url': f_url,
-                              'logical_type': logical_file_type,
-                              'logical_file_id': logical_file_id})
-            else:  # file is not found in Django
-                logger.error("data_store_structure: filename {} in iRODs has no analogue in Django"
-                             .format(name_with_full_path))
-
     except SessionException as ex:
-        logger.error("session exception querying store_path {} for {}".format(store_path, res_id))
+        logger.error("session exception listing store_path {} for {}".format(store_path, res_id))
         return HttpResponse(ex.stderr, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    files = []
+    for fname in store[1]:  # files
+        fname = fname.decode('utf-8')
+        name_with_full_path = os.path.join(res_coll, fname)
+        size = istorage.size(name_with_full_path)
+        mtype = get_file_mime_type(fname)
+        idx = mtype.find('/')
+        if idx >= 0:
+            mtype = mtype[idx + 1:]
+        f_pk = ''
+        f_url = ''
+        logical_file_type = ''
+        logical_file_id = ''
+        for f in ResourceFile.objects.filter(object_id=resource.id):
+            if name_with_full_path == f.storage_path:
+                f_pk = f.pk
+                f_url = get_resource_file_url(f)
+                if resource.resource_type == "CompositeResource":
+                    f_logical = f.get_or_create_logical_file
+                    logical_file_type = f.logical_file_type_name
+                    logical_file_id = f_logical.id
+                break
+
+        if f_pk != '':  # file is found in Django
+            files.append({'name': fname, 'size': size, 'type': mtype, 'pk': f_pk, 'url': f_url,
+                          'logical_type': logical_file_type,
+                          'logical_file_id': logical_file_id})
+        else:  # file is not found in Django
+            logger.error("data_store_structure: filename {} in iRODs has no analogue in Django"
+                         .format(name_with_full_path))
 
     return_object = {'files': files,
                      'folders': store[0],
                      'can_be_public': resource.can_be_public_or_discoverable}
 
     if resource.resource_type == "CompositeResource":
-        # logger.debug("resource {}: begin CompositeResource handling".format(res_id))
         spatial_coverage_dict = get_coverage_data_dict(resource)
         temporal_coverage_dict = get_coverage_data_dict(resource, coverage_type='temporal')
         return_object['spatial_coverage'] = spatial_coverage_dict
         return_object['temporal_coverage'] = temporal_coverage_dict
-        # logger.debug("resource {}: end CompositeResource handling".format(res_id))
     return HttpResponse(
         json.dumps(return_object),
         content_type="application/json"

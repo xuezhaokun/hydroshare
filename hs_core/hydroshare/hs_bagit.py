@@ -13,6 +13,7 @@ from rdflib import Namespace, URIRef
 import bagit
 from mezzanine.conf import settings
 from hs_core.models import Bags, ResourceFile
+from django_irods.icommands import SessionException
 
 
 class HsBagitException(Exception):
@@ -55,6 +56,7 @@ def create_bag_files(resource):
     create a bag on demand as needed.
     """
     from hs_core.hydroshare.utils import current_site_url, get_file_mime_type
+    import logging
 
     istorage = resource.get_irods_storage()
 
@@ -85,13 +87,25 @@ def create_bag_files(resource):
 
     # create resourcemetadata.xml in local directory and upload it to iRODS
     from_file_name = os.path.join(temp_path, 'resourcemetadata.xml')
+    try:
+        xml = resource.get_metadata_xml()
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.error("exception during get_metadata_xml: {}", e.message)
+        raise e
+
     with open(from_file_name, 'w') as out:
         # resources that don't support file types this would write only resource level metadata
         # resource types that support file types this would write resource level metadata
         # as well as file type metadata
-        out.write(resource.get_metadata_xml())
+        out.write(xml)
     to_file_name = os.path.join(resource.root_path, 'data', 'resourcemetadata.xml')
-    istorage.saveFile(from_file_name, to_file_name, True)
+    try:
+        istorage.saveFile(from_file_name, to_file_name, True)
+    except SessionException as e:
+        logger = logging.getLogger(__name__)
+        logger.error("exception during saveFile {} {}".format(from_file_name, to_file_name))
+        raise e
 
     # URLs are found in the /data/ subdirectory to comply with bagit format assumptions
     current_site_url = current_site_url()
@@ -153,8 +167,8 @@ def create_bag_files(resource):
         for contained_res in resource.resources.all():
             contained_res_id = contained_res.short_id
             resource_map_url = '{hs_url}/resource/{res_id}/data/resourcemap.xml'.format(
-                    hs_url=current_site_url,
-                    res_id=contained_res_id)
+                hs_url=current_site_url,
+                res_id=contained_res_id)
 
             ar = AggregatedResource(resource_map_url)
             ar._ore.isAggregatedBy = ag_url
@@ -182,7 +196,12 @@ def create_bag_files(resource):
     with open(from_file_name, 'w') as out:
         out.write(xml_string)
     to_file_name = os.path.join(resource.root_path, 'data', 'resourcemap.xml')
-    istorage.saveFile(from_file_name, to_file_name, False)
+    try:
+        istorage.saveFile(from_file_name, to_file_name, False)
+    except SessionException as e:
+        logger = logging.getLogger(__name__)
+        logger.error("exception during saveFile {} {}".format(from_file_name, to_file_name))
+        raise e
 
     res_coll = resource.root_path
     istorage.setAVU(res_coll, 'metadata_dirty', "false")

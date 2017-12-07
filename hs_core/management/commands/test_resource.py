@@ -34,10 +34,14 @@ class TestResource(object):
             print("  AVU {} WAS NOT FOUND.".format(label))
             return None
 
-    def test(self):
+    def test(self, repair):
         """ Test view for resource depicts output of various integrity checking scripts """
 
-        print("TEST {}".format(self.short_id))
+        if repair:
+            print("TESTING AND REPAIRING {}", self.short_id)
+        else:
+            print("TESTING {}".format(self.short_id))
+
         try:
             res = BaseResource.objects.get(short_id=self.short_id)
         except BaseResource.DoesNotExist:
@@ -55,14 +59,24 @@ class TestResource(object):
 
         for a in ('bag_modified', 'isPublic', 'resourceType', 'quotaUserName'):
             value = self.test_avu(a)
-            if value is not None and a == 'resourceType' and value != self.resource.resource_type:
+            if a == 'resourceType' and value is not None and value != self.resource.resource_type:
                 self.label()
-                print("  resourceType is {}, should be {}".format(value,
-                                                                  self.resource.resource_type))
+
+                print("  resourceType is {}, should be {}{}".format(
+                    value,
+                    self.resource.resource_type,
+                    ' (REPAIRING)' if repair else ''))
+                if repair:
+                    self.resource.setAVU('resourceType', self.resource.resource_type)
+
             if a == 'isPublic' and value is not None and value != self.resource.raccess.public:
                 self.label()
-                print("  isPublic AVU is {}, but public is {}".format(value,
-                                                                      self.resource.raccess.public))
+                print("  isPublic AVU is {}, but public is {}{}".format(
+                    value,
+                    self.resource.raccess.public,
+                    ' (REPAIRING)' if repair else ''))
+                if repair:
+                    self.resource.setAVU('isPublic', self.resource.raccess.public)
 
         irods_issues, irods_errors = self.resource.check_irods_files(log_errors=False,
                                                                      return_errors=True)
@@ -100,10 +114,18 @@ class Command(BaseCommand):
             help='log errors to system log',
         )
 
+        # Named (optional) arguments
+        parser.add_argument(
+            '--repair',
+            action='store_true',  # True for presence, False for absence
+            dest='repair',           # value is options['log']
+            help='repair problems if possible',
+        )
+
     def handle(self, *args, **options):
         if len(options['resource_ids']) > 0:  # an array of resource short_id to check.
             for rid in options['resource_ids']:
                 TestResource(rid).test()
         else:
             for r in BaseResource.objects.all():
-                TestResource(r.short_id).test()
+                TestResource(r.short_id).test(options['repair'])

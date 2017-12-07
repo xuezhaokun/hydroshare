@@ -7,7 +7,7 @@ part of a generic logical file.
 """
 
 from django.core.management.base import BaseCommand
-
+from hs_core.models import BaseResource
 from hs_composite_resource.models import CompositeResource
 
 
@@ -30,10 +30,19 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if len(options['resource_ids']) > 0:  # an array of resource short_id to check.
             for rid in options['resource_ids']:
+                # first check whether resource exists at all
+                try:
+                    resource = BaseResource.objects.get(short_id=rid)
+                except BaseResource.DoesNotExist:
+                    msg = "Resource with id {} does not exist in Django".format(rid)
+                    print(msg)
+                    continue
+
+                # then try to load the CompositeResource at that location.
                 try:
                     resource = CompositeResource.objects.get(short_id=rid)
                 except CompositeResource.DoesNotExist:
-                    msg = "Resource with id {} not found in Django Resources".format(rid)
+                    msg = "Resource with id {} is not a composite resource".format(rid)
                     print(msg)
                     continue
 

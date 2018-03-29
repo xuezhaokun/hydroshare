@@ -215,9 +215,9 @@ def signup(request, template="accounts/account_signup.html", extra_context=None)
     # }
     # context.update(extra_context or {})
     # return render(request, template, context)
-
+    context = {'sitekey': settings.RECAPTCHA_SITE_KEY}
     # This one keeps the css but not able to retained user entered data.
-    return HttpResponseRedirect(request.META['HTTP_REFERER'])
+    return HttpResponseRedirect(request.META['HTTP_REFERER'], context)
 
 
 def signup_verify(request, uidb36=None, token=None):

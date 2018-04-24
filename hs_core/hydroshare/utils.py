@@ -1045,6 +1045,73 @@ def add_metadata_element_to_xml(root, md_element, md_fields):
                 field.text = str(attr)
 
 
+class ZippedBag(object):
+    """
+        Extract the contents of a zipped bag resource file
+        """
+
+    def __init__(self, zip_file):
+        self.zip_file = zip_file
+
+    def black_list_path(self, file_path):
+        return file_path.startswith('__MACOSX/')
+
+    def resource_metadata(self, file_name):
+        return file_name == "resourcemetadata.xml"
+
+    def black_list_name(self, file_name):
+        return file_name == '.DS_Store'
+
+    def get_resource_metadata(self):
+        temp_dir = tempfile.mkdtemp()
+        try:
+            file_path = None
+            for name_path in self.zip_file.namelist():
+                name = os.path.basename(name_path)
+                if name != '':
+                    if self.resource_metadata(name):
+                        self.zip_file.extract(name_path, temp_dir)
+                        file_path = os.path.join(temp_dir, name_path)
+                        split = name_path.split("/")
+                        split_index = 2
+                        content_path = "/".join(split[split_index:])
+                        logger.debug("Opening {0} as File with name {1}".format(file_path,
+                                                                                name_path))
+                        f = File(file=open(file_path, 'rb'),
+                                 name=content_path)
+                        f.size = os.stat(file_path).st_size
+                        return f.read()
+        finally:
+            shutil.rmtree(temp_dir)
+
+    def get_resource_files(self):
+        temp_dir = tempfile.mkdtemp()
+        try:
+            file_path = None
+            for name_path in self.zip_file.namelist():
+                if not self.black_list_path(name_path):
+                    name = os.path.basename(name_path)
+                    if name != '':
+                        if not self.black_list_name(name):
+                            self.zip_file.extract(name_path, temp_dir)
+                            file_path = os.path.join(temp_dir, name_path)
+                            split = name_path.split("/")
+                            split_index = 3
+                            if name_path.endswith("resourcemap.xml"):
+                                split_index = 2
+                            elif len(split) < 3:
+                                continue
+                            content_path = "/".join(split[split_index:])
+                            logger.debug("Opening {0} as File with name {1}".format(file_path,
+                                                                                    name_path))
+                            f = File(file=open(file_path, 'rb'),
+                                     name=content_path)
+                            f.size = os.stat(file_path).st_size
+                            yield f
+        finally:
+            shutil.rmtree(temp_dir)
+
+
 class ZipContents(object):
     """
     Extract the contents of a zip file one file at a time
@@ -1070,10 +1137,17 @@ class ZipContents(object):
                         if not self.black_list_name(name):
                             self.zip_file.extract(name_path, temp_dir)
                             file_path = os.path.join(temp_dir, name_path)
+                            split = name_path.split("/")
+                            split_index = 3
+                            if name_path.endswith("resourcemap.xml"):
+                                split_index = 2
+                            elif len(split) < 3:
+                                continue
+                            content_path = "/".join(split[split_index:])
                             logger.debug("Opening {0} as File with name {1}".format(file_path,
                                                                                     name_path))
                             f = File(file=open(file_path, 'rb'),
-                                     name=name_path)
+                                     name=content_path)
                             f.size = os.stat(file_path).st_size
                             yield f
         finally:

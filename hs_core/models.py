@@ -1423,6 +1423,9 @@ class Format(AbstractMetaDataElement):
         """Return value field for unicode representation."""
         return self.value
 
+    def as_dict(self):
+        return {self.term: {"value": self.value}}
+
 
 class FundingAgency(AbstractMetaDataElement):
     """Define FundingAgency custom metadata element mode."""
@@ -1454,6 +1457,10 @@ class FundingAgency(AbstractMetaDataElement):
             raise ValidationError("Agency name is missing")
 
         super(FundingAgency, cls).update(element_id, **kwargs)
+
+    def as_dict(self):
+        return {self.term: {"agency_name": self.agency_name, "award_title": self.award_title,
+                            "award_number": self.award_number, "agency_url": self.agency_url}}
 
 
 class Subject(AbstractMetaDataElement):
@@ -1492,6 +1499,9 @@ class Subject(AbstractMetaDataElement):
             raise ValidationError("The only subject element of the resource can't be deleted.")
         sub.delete()
 
+    def as_dict(self):
+        return {self.term: {"value": self.value}}
+
 
 class Source(AbstractMetaDataElement):
     """Define Source custom metadata element model."""
@@ -1507,6 +1517,9 @@ class Source(AbstractMetaDataElement):
     def __unicode__(self):
         """Return derived_from field for unicode representation."""
         return self.derived_from
+
+    def as_dict(self):
+        return {self.term: {"derived_from": self.derived_from}}
 
 
 class Rights(AbstractMetaDataElement):
@@ -1535,6 +1548,9 @@ class Rights(AbstractMetaDataElement):
     def remove(cls, element_id):
         """Define custom remove method for Rights model."""
         raise ValidationError("Rights element of a resource can't be deleted.")
+
+    def as_dict(self):
+        return {self.term: {"statement": self.statement, "url": self.url}}
 
 
 def short_id():
@@ -3512,6 +3528,21 @@ def new_get_content_model(self):
 
 Page.get_content_model = new_get_content_model
 
+import simplejson
+def serializable(cls):
+    class wrapper:
+        def __init__(self, *args):
+            self.wrapped = cls(*args)
+        def __getattr__(self, *args):
+            return getattr(self.wrapped, *args)
+        def serialize(self):
+            return simplejson.encode(self.wrapped)
+
+    @staticmethod
+    def deserialize(ser_str):
+        return simplejson.decode(ser_str)
+
+    return wrapper
 
 # This model has a one-to-one relation with the AbstractResource model
 class CoreMetaData(models.Model):
@@ -3893,6 +3924,64 @@ class CoreMetaData(models.Model):
                             self.identifiers.filter(name=id_item[element_name]['name']).delete()
                             self.create_element(element_model_name=element_name,
                                                 **id_item[element_name])
+
+    def from_xml(self, g):
+        from rdflib.namespace import DC, DCTERMS, Namespace
+        res = self.resource()
+        HSTERMS = Namespace("http://hydroshare.org/terms/")
+        self.type = (g.objects(predicate=DC.type)).next()
+        self.title = (g.objects(predicate=DC.title)).next()
+        # TODO be more thorough here?
+        desc = (g.objects(predicate=DCTERMS.abstract)).next()
+
+        for awards in g.objects(predicate=HSTERMS.awardInfo):
+            fundingAgencyName, awardTitle, awardNumber = ""
+            for label, value in g.predicate_objects(subject=awards):
+                if label == HSTERMS.fundingAgencyName:
+                    fundingAgencyName = value
+                if label == HSTERMS.awardTitle:
+                    awardTitle = value
+                if label == HSTERMS.awardNumber:
+                    awardNumber = value
+            res.create_metadata_element(res.short_id, 'fundingagency',
+                                                   agency_name=fundingAgencyName,
+                                             award_title=awardTitle,
+                                             award_number=awardNumber,
+                                             agency_url=str(awards))
+
+        '''
+        for creators in g.objects(predicate=DC.creator):
+            creator = {}
+            for label, value in g.predicate_objects(subject=creators):
+                creator.append()
+                if label == HSTERMS.name:
+                    name = value
+                if label == HSTERMS.creatorOrder:
+                    creatorOrder = value
+                if label ==
+
+        '''
+
+
+        pass
+
+    def get_rdfxml(self, pretty_print=True, include_format_elements=True):
+        import django
+        fields = self._meta.get_all_field_names()
+        dict = {}
+        for field in fields:
+            try:
+                attr_dic = {}
+                attributes = getattr(self, field, None)
+                if attributes is not None and not isinstance(attributes, int):
+                    for attr in attributes.get_queryset():
+                        attr_dic[attr.term] = attr.as_dict()
+
+
+                dict[field] = attr_dic
+            except CoreMetaData.DoesNotExist:
+                pass
+        return dict
 
     def get_xml(self, pretty_print=True, include_format_elements=True):
         """Get metadata XML rendering."""

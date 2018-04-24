@@ -6,6 +6,10 @@ from hs_core.models import BaseResource, ResourceManager, resource_processor
 
 from hs_file_types.models import GenericLogicalFile
 
+from rdflib.namespace import DC, RDF
+from rdflib import Graph
+from rdflib.parser import StringInputSource
+from hs_core.models import AbstractMetaDataElement
 
 class CompositeResource(BaseResource):
     objects = ResourceManager("CompositeResource")
@@ -46,6 +50,12 @@ class CompositeResource(BaseResource):
     def supports_logical_file(self):
         """ if this resource allows associating resource file objects with logical file"""
         return True
+
+
+    def get_metadata_rdfxml(self, pretty_print=True):
+        from rdflib import Graph
+        g = Graph()
+
 
     def get_metadata_xml(self, pretty_print=True, include_format_elements=True):
         from lxml import etree

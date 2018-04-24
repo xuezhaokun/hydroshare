@@ -1171,7 +1171,8 @@ def create_resource(request, *args, **kwargs):
                 # TODO: should probably be resource_federation_path like it is set to.
                 fed_res_path=fed_res_path[0] if len(fed_res_path) == 1 else '',
                 move=(fed_copy_or_move == 'move'),
-                content=res_title
+                content=res_title,
+                unpack_file=True
         )
     except SessionException as ex:
         ajax_response_data['message'] = ex.stderr

@@ -34,6 +34,8 @@ class CompositeResourceTest(MockIRODSTestCaseMixin, TransactionTestCase):
         self.raster_file = 'hs_composite_resource/tests/data/{}'.format(self.raster_file_name)
         self.generic_file_name = 'generic_file.txt'
         self.generic_file = 'hs_composite_resource/tests/data/{}'.format(self.generic_file_name)
+        self.zip_resource_name = 'dc8a31ef4741441ea5e7e837492fc3aa.zip'
+        self.zip_resource = 'hs_composite_resource/tests/data/{}'.format(self.zip_resource_name)
 
         target_temp_raster_file = os.path.join(self.temp_dir, self.raster_file_name)
         shutil.copy(self.raster_file, target_temp_raster_file)
@@ -42,6 +44,10 @@ class CompositeResourceTest(MockIRODSTestCaseMixin, TransactionTestCase):
         target_temp_generic_file = os.path.join(self.temp_dir, self.generic_file_name)
         shutil.copy(self.generic_file, target_temp_generic_file)
         self.generic_file_obj = open(target_temp_generic_file, 'r')
+
+        target_temp_zip_file = os.path.join(self.temp_dir, self.zip_resource_name)
+        shutil.copy(self.zip_resource, target_temp_zip_file)
+        self.zip_file_obj = open(target_temp_zip_file, 'r')
 
     def tearDown(self):
         super(CompositeResourceTest, self).tearDown()
@@ -861,6 +867,37 @@ class CompositeResourceTest(MockIRODSTestCaseMixin, TransactionTestCase):
         # test that we can zip the folder small_logan
         self.assertEqual(self.composite_resource.supports_zip(folder_to_zip), True)
         self.composite_resource.delete()
+
+    def test_from_bag(self):
+        #self.composite_resource = hydroshare.from_zip(
+        resource = hydroshare.from_zip(
+            zip=self.zip_file_obj,
+            user=self.user
+        )
+        self.assertEquals("Logan River Geography", resource.title)
+
+    def test_this(self):
+        import zipfile
+        from hs_core.hydroshare.utils import ZippedBag
+        from rdflib import namespace
+        from rdflib.namespace import DC
+        from rdflib import Graph
+        from rdflib.parser import StringInputSource
+        from rdflib.namespace import split_uri
+
+        zfile = zipfile.ZipFile(self.zip_file_obj)
+        zcontents = ZippedBag(zfile)
+        resource_metadata_xml_string = zcontents.get_resource_metadata()
+        g = Graph()
+        g.parse(StringInputSource(resource_metadata_xml_string))
+
+        root_subject = (g.subjects(predicate=DC.title)).next()
+        metadata = {}
+        for term, value in g.predicate_objects(subject=root_subject):
+            uri, label = split_uri(term)
+            print label + "\n" + value
+            metadata[str(label)] = str(value)
+        metadata
 
     def test_supports_delete_original_folder_on_zip(self):
         """Here we are testing the function supports_delete_original_folder_on_zip() of the

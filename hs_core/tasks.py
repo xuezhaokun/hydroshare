@@ -229,6 +229,10 @@ def manage_task_nightly():
                 uq.save()
 
 
+def parse_resource_map(resource, file):
+    pass
+
+
 @shared_task
 def add_zip_file_contents_to_resource(pk, zip_file_path):
     """Add zip file to existing resource and remove tmp zip file."""
@@ -246,6 +250,8 @@ def add_zip_file_contents_to_resource(pk, zip_file_path):
 
         for i, f in enumerate(files):
             logger.debug("Adding file {0} to resource {1}".format(f.name, pk))
+            if f.name.endswith("resourcemap.xml"):
+                parse_resource_map(resource, f)
             utils.add_file_to_resource(resource, f)
             resource.file_unpack_message = "Imported {0} of about {1} file(s) ...".format(
                 i, num_files)

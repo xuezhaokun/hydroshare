@@ -303,6 +303,85 @@ def add_zip_file_contents_to_resource_async(resource, f):
     resource.save()
 
 
+from rdflib.namespace import split_uri
+from rdflib import Graph
+from rdflib.parser import StringInputSource
+from rdflib.namespace import DC
+def to_dict(g, subject=None):
+    if subject is None:
+        for s in g.subjects(predicate=DC.title):
+            subject = s
+    metadata = {}
+    for term, value in g.predicate_objects(subject=subject):
+        deep_metadata = to_dict(g, value)
+        uri, label = split_uri(term)
+        if deep_metadata == {}:
+            #print label + "\n" + value
+            if isinstance(value, unicode):
+                metadata[str(label)] = str(value)
+            else:
+                a, b = split_uri(value)
+                metadata[str(label)] = b
+        else:
+            metadata[str(label)] = deep_metadata
+    return metadata
+
+from hs_core.hydroshare.utils import ZippedBag
+from lxml import etree
+from hs_core.models import CoreMetaData
+
+def from_zip(zip, user):
+    #unpack resourcemap from zip
+    zfile = zipfile.ZipFile(zip)
+    zcontents = ZippedBag(zfile)
+    resource_metadata_xml_string = zcontents.get_resource_metadata()
+
+    g = Graph()
+    g.parse(StringInputSource(resource_metadata_xml_string))
+
+    dict = to_dict(g)
+
+    #title = dict["title"]
+    dict["resource_type"] = dict["type"]["label"].replace(" ", "")
+
+    del dict["creator"]
+    del dict["date"]
+    del dict["format"]
+    dict["_rights"] = dict.pop("rights")
+    del dict["awardInfo"]
+    del dict["source"]
+    #dict["sources"] = dict.pop("source")
+    #dict["funding_agencies"] = dict.pop("awardInfo")
+
+    dict["_language"] = dict.pop("language")
+
+    #create the resource
+    with transaction.atomic():
+        cls = check_resource_type(dict["resource_type"])
+        #owner = utils.user_from_id(owner)
+
+        # create the resource
+        resource = cls.objects.create(
+            #resource_type=resource_type,
+            user=user,
+            creator=user,
+            last_changed_by=user,
+            in_menus=[],
+            **dict
+
+        )
+
+        #resource.metadata
+    return resource
+    #return resource.add_metadata_xml(xml_string=resource_metadata_xml_string)
+    #for i, f in enumerate(zcontents.get_resource_files()):
+
+
+
+    #return resource_map
+    #extract metadata
+    #call create_resource
+
 def create_resource(
         resource_type, owner, title,
         edit_users=None, view_users=None, edit_groups=None, view_groups=None,
